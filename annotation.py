@@ -23,19 +23,19 @@ import tf_shared_k as tfs
 # Instance Normalization: https://arxiv.org/abs/1701.02096
 
 # Setup:
-TRAIN = False  # TRAIN ANYWAY FOR # epochs, or just evaluate
+TRAIN = True
 TEST = True
 SAVE_PREDICTIONS = True
 SAVE_HIDDEN = False
 EXPORT_OPT_BINARY = False
 
-DATASET = 'ptb6'
+DATASET = 'combined'
 
 batch_size = 256
-epochs = 50
-
-num_channels = 1
-num_classes = 5
+epochs = 10
+# These variables are set based on the dataset we are looking at.
+num_channels = 0
+num_classes = 0
 data_directory = ''
 
 if DATASET == 'mit':
@@ -51,6 +51,10 @@ elif DATASET == 'ptb6':
 elif DATASET == 'incart':
     num_classes = 5
     data_directory = 'data/incartdb_v1_all'
+elif DATASET == 'combined':
+    num_classes = 2
+    data_directory = 'data/incart_ptb_all'
+
 learn_rate = 0.0002
 
 description = DATASET + '_annotate'
@@ -69,10 +73,6 @@ start_time_ms = tfs.current_time_ms()
 
 # Load Data:
 x_tt, y_tt = tfs.load_data_v2(data_directory, x_shape, y_shape, 'X', 'Y')
-
-# Additional Dataset:
-
-x_i, y_i = tfs.load_data_v2('data/incartdb_v1_all', x_shape, [2000, 5], 'X', 'Y')
 
 if num_channels < 2 and not DATASET == 'incart':
     x_tt = np.reshape(x_tt[:, :, 0], [-1, seq_length, 1])
@@ -159,11 +159,6 @@ with tf.device('/gpu:0'):
         yy_predicted = tfs.maximize_output_probabilities(yy_probabilities)
         data_dict = {'x_val': x_test, 'y_val': y_test, 'y_prob': yy_probabilities, 'y_out': yy_predicted}
         savemat(tfs.prep_dir(output_folder) + description + '.mat', mdict=data_dict)
-
-        yy_probabilities = model.predict(x_i, batch_size=batch_size)
-        yy_predicted = tfs.maximize_output_probabilities(yy_probabilities)
-        data_dict = {'x_val': x_i, 'y_val': y_i, 'y_prob': yy_probabilities, 'y_out': yy_predicted}
-        savemat(tfs.prep_dir(output_folder) + 'incart_ptbModel' + '.mat', mdict=data_dict)
 
     if SAVE_HIDDEN:
         layers_of_interest = ['conv1d_1', 'conv1d_2', 'conv1d_3', 'conv1d_4', 'conv1d_5', 'concatenate_1', 'conv1d_6',
