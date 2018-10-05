@@ -23,18 +23,19 @@ import tf_shared_k as tfs
 # Instance Normalization: https://arxiv.org/abs/1701.02096
 
 # Setup:
-TRAIN = True
+TRAIN = False
 TEST = True
-SAVE_PREDICTIONS = True
+SAVE_PREDICTIONS = False
 SAVE_HIDDEN = False
-EXPORT_OPT_BINARY = False
+EXPORT_OPT_BINARY = True
 
 DATASET = 'combined'
 
 batch_size = 256
 epochs = 10
+
 # These variables are set based on the dataset we are looking at.
-num_channels = 0
+num_channels = 1
 num_classes = 0
 data_directory = ''
 
