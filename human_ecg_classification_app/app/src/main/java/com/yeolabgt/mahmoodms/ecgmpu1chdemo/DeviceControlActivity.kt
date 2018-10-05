@@ -80,9 +80,6 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     private val batteryWarning = 20
     private var dataRate: Double = 0.toDouble()
     // Tensorflow Implementation:
-    private val INPUT_DATA_FEED_KEY = "input_1"
-    private val OUTPUT_DATA_FEED_KEY = "conv1d_8/truediv"
-
     private var mTFRunModel = false
     private var mTensorFlowInferenceInterface: TensorFlowInferenceInterface? = null
     private var mOutputScoresNames: Array<String>? = null
@@ -98,7 +95,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
     private val mClassifyThread = Runnable {
         if (mTFRunModel) {
-            val outputProbabilities = FloatArray(2000 * 5)
+            val outputProbabilities = FloatArray(2000 * 2)
             val ecgRawDoubles = mCh1!!.classificationBuffer
             // Filter, level and return as floats:
             val inputArray = jecgFiltRescale(ecgRawDoubles)  //Float Array
@@ -108,37 +105,27 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             mTensorFlowInferenceInterface!!.fetch(OUTPUT_DATA_FEED_KEY, outputProbabilities)
             // Save outputProbabilities
             Log.e(TAG, "OutputArray: ${outputProbabilities.size}")
-            val outputProbReshaped = jrearrange5c(outputProbabilities)
+            val outputProbReshaped = jrearrange2c(outputProbabilities)
             val classDist = jgetClassDist(outputProbReshaped)
             val outputClass = classDist[0]
             val classString: String = "Normal: %1.2f \n".format(classDist[1]/2000.0) +
-                    "SVEB: %1.2f \n".format(classDist[2]/2000.0) +
-                    "VEB: %1.2f \n".format(classDist[3]/2000.0) +
-                    "Fused: %1.2f \n".format(classDist[4]/2000.0) +
-                    "Paced/other: %1.2f \n".format(classDist[5]/2000.0) +
+                    "Abnormal: %1.2f \n".format(classDist[2]/2000.0) +
                     "Output class: $outputClass"
             // Distribute across 5 FAs:
             val outputProbClass0 = FloatArray(2000)
             val outputProbClass1 = FloatArray(2000)
-            val outputProbClass2 = FloatArray(2000)
-            val outputProbClass3 = FloatArray(2000)
-            val outputProbClass4 = FloatArray(2000)
             System.arraycopy(outputProbReshaped, 0, outputProbClass0, 0, 2000)
             System.arraycopy(outputProbReshaped, 2000, outputProbClass1, 0, 2000)
-            System.arraycopy(outputProbReshaped, 4000, outputProbClass2, 0, 2000)
-            System.arraycopy(outputProbReshaped, 6000, outputProbClass3, 0, 2000)
-            System.arraycopy(outputProbReshaped, 8000, outputProbClass4, 0, 2000)
             runOnUiThread {
                 classOutputText.text = classString
             }
             // Save data:
-            mTensorflowOutputsSaveFile?.writeToDiskFloat(inputArray, outputProbClass0,
-                    outputProbClass1, outputProbClass2, outputProbClass3, outputProbClass4)
+            mTensorflowOutputsSaveFile?.writeToDiskFloat(inputArray, outputProbClass0, outputProbClass1)
         }
     }
 
     private fun enableTensorflowModel() {
-        val classificationModelBinary = "opt_incart_annotate.pb"
+        val classificationModelBinary = "opt_combined_annotate.pb"
         val classificationModelPath = Environment.getExternalStorageDirectory().absolutePath +
                 "/Download/tensorflow_assets/ecg_classify/" + classificationModelBinary
         Log.e(TAG, "Tensorflow classification Model Path: $classificationModelPath")
@@ -276,7 +263,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             Toast.makeText(this, "No Devices Queued, Restart!", Toast.LENGTH_SHORT).show()
         }
         mActBle = ActBle(this, mBluetoothManager, this)
-        mBluetoothGattArray = Array(deviceMacAddresses!!.size, { i -> mActBle!!.connect(mBluetoothDeviceArray[i]) })
+        mBluetoothGattArray = Array(deviceMacAddresses!!.size) { i -> mActBle!!.connect(mBluetoothDeviceArray[i]) }
         for (i in mBluetoothDeviceArray.indices) {
             Log.e(TAG, "Connecting to Device: " + (mBluetoothDeviceArray[i]!!.name + " " + mBluetoothDeviceArray[i]!!.address))
             if ("EMG 250Hz" == mBluetoothDeviceArray[i]!!.name) {
@@ -320,11 +307,11 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         val directory = "/ECGData"
         val fileNameTimeStamped = "ECGData_" + mTimeStamp + "_" + mSampleRate.toString() + "Hz"
         if (mPrimarySaveDataFile == null) {
-            Log.e(TAG, "fileTimeStamp: " + fileNameTimeStamped)
+            Log.e(TAG, "fileTimeStamp: $fileNameTimeStamped")
             mPrimarySaveDataFile = SaveDataFile(directory, fileNameTimeStamped,
                     24, 1.toDouble() / mSampleRate, true, false)
         } else if (!mPrimarySaveDataFile!!.initialized) {
-            Log.e(TAG, "New Filename: " + fileNameTimeStamped)
+            Log.e(TAG, "New Filename: $fileNameTimeStamped")
             mPrimarySaveDataFile?.createNewFile(directory, fileNameTimeStamped)
         }
 
@@ -340,13 +327,13 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
     private fun createNewFileMPU() {
         val directory = "/MPUData"
-        val fileNameTimeStamped = "MPUData_" + mTimeStamp
+        val fileNameTimeStamped = "MPUData_$mTimeStamp"
         if (mSaveFileMPU == null) {
-            Log.e(TAG, "fileTimeStamp: " + fileNameTimeStamped)
+            Log.e(TAG, "fileTimeStamp: $fileNameTimeStamped")
             mSaveFileMPU = SaveDataFile(directory, fileNameTimeStamped,
                     16, 0.032, true, false)
         } else if (!mSaveFileMPU!!.initialized) {
-            Log.e(TAG, "New Filename: " + fileNameTimeStamped)
+            Log.e(TAG, "New Filename: $fileNameTimeStamped")
             mSaveFileMPU?.createNewFile(directory, fileNameTimeStamped)
         }
     }
@@ -855,12 +842,16 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
     private external fun jecgFiltRescale(data: DoubleArray): FloatArray
 
-    private external fun jrearrange5c(data: FloatArray): FloatArray
+//    private external fun jrearrange5c(data: FloatArray): FloatArray
+
+    private external fun jrearrange2c(data: FloatArray): FloatArray
 
     private external fun jgetClassDist(data: FloatArray): FloatArray
 
     companion object {
         const val HZ = "0 Hz"
+        private const val INPUT_DATA_FEED_KEY = "input_1"
+        private const val OUTPUT_DATA_FEED_KEY = "conv1d_8/truediv"
         private val TAG = DeviceControlActivity::class.java.simpleName
         var mRedrawer: Redrawer? = null
         // Power Spectrum Graph Data:

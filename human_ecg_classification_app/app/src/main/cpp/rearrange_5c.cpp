@@ -20,14 +20,15 @@
 //                float scores[5]
 // Return Type  : void
 //
-void get_class_distribution(const float input_array[10000], double *b_index,
-                            float scores[5]) {
+void get_class_distribution(const float input_array[4000], double *b_index,
+                            float scores[2])
+{
     int ixstart;
     int xoffset;
     float s;
     int ix;
     boolean_T exitg1;
-    for (ixstart = 0; ixstart < 5; ixstart++) {
+    for (ixstart = 0; ixstart < 2; ixstart++) {
         xoffset = ixstart * 2000;
         s = input_array[xoffset];
         for (ix = 0; ix < 1999; ix++) {
@@ -43,31 +44,25 @@ void get_class_distribution(const float input_array[10000], double *b_index,
     if (rtIsNaNF(scores[0])) {
         ix = 2;
         exitg1 = false;
-        while ((!exitg1) && (ix < 6)) {
-            ixstart = ix;
-            if (!rtIsNaNF(scores[ix - 1])) {
-                s = scores[ix - 1];
-                xoffset = ix;
+        while ((!exitg1) && (ix < 3)) {
+            ixstart = 2;
+            if (!rtIsNaNF(scores[1])) {
+                s = scores[1];
+                xoffset = 2;
                 exitg1 = true;
             } else {
-                ix++;
+                ix = 3;
             }
         }
     }
 
-    if (ixstart < 5) {
-        while (ixstart + 1 < 6) {
-            if (scores[ixstart] > s) {
-                s = scores[ixstart];
-                xoffset = ixstart + 1;
-            }
-
-            ixstart++;
-        }
+    if ((ixstart < 2) && (scores[1] > s)) {
+        xoffset = 2;
     }
 
-    *b_index = (double) xoffset - 1.0;
+    *b_index = (double)xoffset - 1.0;
 }
+
 
 // Function Definitions
 
@@ -85,6 +80,17 @@ void rearrange_5c(const float input_array[10000], float rearranged[10000]) {
         }
     }
 }
+
+void rearrange_2c(const float input_array[4000], float rearranged[4000]) {
+    int i;
+    int j;
+    for (i = 0; i < 2000; i++) {
+        for (j = 0; j < 2; j++) {
+            rearranged[i + 2000 * j] = input_array[i * 2 + j];
+        }
+    }
+}
+
 
 //
 // Arguments    : void

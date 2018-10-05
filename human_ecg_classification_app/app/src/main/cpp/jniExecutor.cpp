@@ -44,19 +44,33 @@ Java_com_yeolabgt_mahmoodms_ecgmpu1chdemo_DeviceControlActivity_jrearrange5c(
 }
 }
 
+extern "C" {
+JNIEXPORT jfloatArray JNICALL
+Java_com_yeolabgt_mahmoodms_ecgmpu1chdemo_DeviceControlActivity_jrearrange2c(
+        JNIEnv *env, jobject jobject1, jfloatArray data) {
+    jfloat *X = env->GetFloatArrayElements(data, NULL);
+    float Y[4000];
+    if (X == NULL) LOGE("ERROR - C_ARRAY IS NULL");
+    jfloatArray m_result = env->NewFloatArray(4000);
+    rearrange_2c(X, Y);
+    env->SetFloatArrayRegion(m_result, 0, 4000, Y);
+    return m_result;
+}
+}
+
 
 extern "C" {
 JNIEXPORT jfloatArray JNICALL
 Java_com_yeolabgt_mahmoodms_ecgmpu1chdemo_DeviceControlActivity_jgetClassDist(
         JNIEnv *env, jobject jobject1, jfloatArray data) {
     jfloat *X = env->GetFloatArrayElements(data, NULL);
-    float Y[6];
+    float Y[3];
     double tmp = 0.0;
     if (X == NULL) LOGE("ERROR - C_ARRAY IS NULL");
-    jfloatArray m_result = env->NewFloatArray(6);
+    jfloatArray m_result = env->NewFloatArray(3);
     get_class_distribution(X, &tmp, &Y[1]);
     Y[0] = (float) tmp;
-    env->SetFloatArrayRegion(m_result, 0, 6, Y);
+    env->SetFloatArrayRegion(m_result, 0, 3, Y);
     return m_result;
 }
 }
@@ -82,7 +96,7 @@ JNIEXPORT jdoubleArray JNICALL
 Java_com_yeolabgt_mahmoodms_ecgmpu1chdemo_DeviceControlActivity_jdownSample(
         JNIEnv *env, jobject jobject1, jdoubleArray data, jint Fs) {
     jdouble *X1 = env->GetDoubleArrayElements(data, NULL);
-    int Xsize[1] = {Fs*4};
+    int Xsize[1] = {Fs * 4};
     double Y[1000]; // First two values = Y; last 499 = cPSD
     int Ysize[2]; // First two values = Y; last 499 = cPSD
     if (X1 == NULL) LOGE("ERROR - C_ARRAY IS NULL");
