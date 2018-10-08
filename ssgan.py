@@ -213,11 +213,13 @@ if TRAIN:
     # TODO: Save gen/disc/combined_model
 
     if TEST:  # Temporary condition
-        y_test_arrange = [to_categorical(np.ones(shape=[x_test.shape[0], 1])), to_categorical(y_test, num_classes=num_classes + 1)]
-        score, acc = disc.evaluate(x_test, y_test_arrange, batch_size=128, verbose=1)
-        print('Test score: {} , Test accuracy: {}'.format(score, acc))
-        y_prob = disc.predict(x_test)
-        tfs.print_confusion_matrix(y_prob, to_categorical(y_train, num_classes=num_classes + 1))
+        y_test_arrange = [np.ones(shape=[x_test.shape[0], 1]), to_categorical(y_test, num_classes=num_classes + 1)]
+        all_out = disc.evaluate(x_test, y_test_arrange, batch_size=128, verbose=1)
+        print("Loss information :", all_out)
+        # binary_loss, categorical_loss, acc
+        # print('Test scores(bin/cat): {},{} , Test accuracy: {}'.format(binary_loss, categorical_loss, acc))
+        # y_prob = disc.predict(x_test)
+        # tfs.print_confusion_matrix(y_prob, to_categorical(y_train, num_classes=num_classes + 1))
 
 # if os.path.isfile(keras_file_location):
 #     if not TRAIN:
