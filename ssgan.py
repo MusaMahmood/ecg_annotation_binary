@@ -14,6 +14,10 @@ from keras.optimizers import Adam
 from keras.utils import to_categorical
 from scipy.io import savemat, loadmat
 from sklearn.model_selection import train_test_split
+import tensorflow as tf
+from keras import backend as K
+from tensorflow.python.tools import freeze_graph
+from tensorflow.python.tools import optimize_for_inference_lib
 
 import tf_shared_k as tfs
 
@@ -160,6 +164,88 @@ def build_discriminator():
     return Model(input_sample_, [valid_, label])
 
 
+# Save graph/model:
+def export_model_keras(keras_model='model.h5', export_dir="graph", model_name="temp_model_name", sequential=True,
+                       custom_objects=None, output_node_to_keep=1):
+    K.clear_session()  # Clears existing graph.
+    if os.path.isfile(keras_model):
+        if custom_objects is None:
+            model = load_model(keras_model)
+        else:
+            model = load_model(keras_model, custom_objects=custom_objects)
+    else:
+        return
+
+    # All new operations will be in test mode from now on.
+    K.set_learning_phase(0)
+
+    # Serialize the model and get its weights, for quick re-building.
+    config = model.get_config()
+    weights = model.get_weights()
+
+    # Re-build a model where the learning phase is now hard-coded to 0.
+    if sequential:
+        new_model = Sequential.from_config(config, custom_objects=custom_objects)
+    else:
+        new_model = Model.from_config(config, custom_objects=custom_objects)
+
+    new_model.set_weights(weights)
+
+    temp_dir = "graph"
+    checkpoint_prefix = os.path.join(temp_dir, "saved_checkpoint")
+    checkpoint_state_name = "checkpoint_state"
+    input_graph_name = "untrained_input_graph.pb"
+
+    # Temporary save graph to disk without weights included.
+    saver = tf.train.Saver()
+    checkpoint_path = saver.save(K.get_session(), checkpoint_prefix, global_step=0,
+                                 latest_filename=checkpoint_state_name)
+    tf.train.write_graph(K.get_session().graph, temp_dir, input_graph_name)
+
+    input_graph_path = os.path.join(temp_dir, input_graph_name)
+    # input_saver_def_path = ""
+    input_saver_def_path = None
+    input_binary = False
+    input_node_names = [node.op.name for node in model.inputs]
+    output_node_names = [node.op.name for node in model.outputs]
+    print("Input layer name: ", input_node_names)
+    print("Output layer name: ", output_node_names)
+    restore_op_name = "save/restore_all"
+    filename_tensor_name = "save/Const:0"
+    output_graph_path = export_dir + '/frozen_' + model_name + '.pb'
+    clear_devices = True  # Remove all the explicit device specifications for this node. This helps to
+    # make the graph more portable.
+
+    # Embed weights inside the graph and save to disk.
+    freeze_graph.freeze_graph(input_graph_path,
+                              input_saver_def_path,
+                              input_binary,
+                              checkpoint_path,
+                              output_node_names[output_node_to_keep],  # not in list
+                              restore_op_name,
+                              filename_tensor_name,
+                              output_graph_path,
+                              clear_devices,
+                              "")
+
+    input_graph_def = tf.GraphDef()
+    with tf.gfile.Open(export_dir + '/frozen_' + model_name + '.pb', "rb") as f:
+        input_graph_def.ParseFromString(f.read())
+    output_graph_def = optimize_for_inference_lib.optimize_for_inference(input_graph_def, input_node_names,
+                                                                         [output_node_names[output_node_to_keep]],
+                                                                         tf.float32.as_datatype_enum)
+    with tf.gfile.FastGFile(export_dir + '/opt_' + model_name + '.pb', "wb") as f:
+        f.write(output_graph_def.SerializeToString())
+
+    print("Graph Saved - Output Directories: ")
+    print("1 - Standard Frozen Model:", export_dir + '/frozen_' + model_name + '.pb')
+    print("2 - Android Optimized Model:", export_dir + '/opt_' + model_name + '.pb')
+
+    tfs.print_graph_nodes(export_dir + '/frozen_' + model_name + '.pb')
+
+    return model
+
+
 def extract_samples():
     input_noise = np.random.normal(0, 1, (seq_init_length, latent_dim))
     gen_outputs = gen.predict(input_noise)
@@ -255,7 +341,6 @@ if TRAIN:
         save_stats(train_stat_file_mat, new_stat_epochs)
         print("Model updated to {} epochs, saved!".format(new_stat_epochs))
 
-
 if TEST:  # Temporary condition
     y_test_arrange = [np.ones(shape=[x_test.shape[0], 1]), to_categorical(y_test, num_classes=num_classes + 1)]
     d_loss = disc.evaluate(x_test, y_test_arrange, batch_size=128, verbose=1)
@@ -282,4 +367,4 @@ print('Elapsed Time (min): ', (tfs.current_time_ms() - start_time_ms) / 60000)
 
 # TODO: Fix this for DISC:
 if EXPORT_OPT_BINARY:
-    tfs.export_model_keras(disc_file, export_dir=tfs.prep_dir("graph"), model_name=description, sequential=False)
+    export_model_keras(disc_file, export_dir=tfs.prep_dir("graph"), model_name=description, sequential=False, output_node_to_keep=1)
