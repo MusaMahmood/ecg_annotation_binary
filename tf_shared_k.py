@@ -125,8 +125,16 @@ def export_model_keras(keras_model='model.h5', export_dir="graph", model_name="t
     # make the graph more portable.
 
     # Embed weights inside the graph and save to disk.
-    freeze_graph.freeze_graph(input_graph_path, input_saver_def_path, input_binary, checkpoint_path, *output_node_names,
-                              restore_op_name, filename_tensor_name, output_graph_path, clear_devices, "")
+    freeze_graph.freeze_graph(input_graph_path,
+                              input_saver_def_path,
+                              input_binary,
+                              checkpoint_path,
+                              *output_node_names,
+                              restore_op_name,
+                              filename_tensor_name,
+                              output_graph_path,
+                              clear_devices,
+                              "")
 
     input_graph_def = tf.GraphDef()
     with tf.gfile.Open(export_dir + '/frozen_' + model_name + '.pb', "rb") as f:
