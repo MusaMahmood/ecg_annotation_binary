@@ -25,17 +25,17 @@ import tf_shared_k as tfs
 SAVE_MODEL = True
 LOAD_MODEL = True
 
-TRAIN = False
+TRAIN = True
 TEST = True
 SAVE_PREDICTIONS = False
 SAVE_HIDDEN = False
-EXPORT_OPT_BINARY = True
+EXPORT_OPT_BINARY = False
 
 DATASET = 'adv'
 
 batch_size = 256
 half_batch = batch_size // 2
-epochs = 1000
+epochs = 6900
 previous_epochs = 0
 
 # These variables are set based on the dataset we are looking at.
@@ -284,7 +284,7 @@ def train_model(total_epochs, sample_interval=100):
         print("%d [D loss: %f, acc: %.2f%%, op_acc: %.2f%%] [G loss: %f]" %
               (epoch, d_loss[0], 100 * d_loss[3], 100 * d_loss[4], g_loss))
 
-        if (epoch % sample_interval) == 0 and epoch > 0:
+        if (epoch % sample_interval) == 0:
             total_training_steps = previous_epochs + epoch
             new_samples = extract_samples()
             savemat(tfs.prep_dir('gen_out/') + 'gen_samples_e' + str(total_training_steps) + '.mat',

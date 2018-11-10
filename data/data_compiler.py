@@ -2,12 +2,12 @@ from scipy.io import savemat, loadmat
 import numpy as np
 from tf_shared import load_data_v2, prep_dir, ind2vec
 
-num_classes = 2
+num_classes = 5
 seq_length = 2000
 input_length = seq_length
-dir_1 = 'incartdb_binary'
-dir_2 = 'ptb_binary'
-dir_out = 'incart_ptb'
+dir_1 = 'incartdb_5c_shift'
+dir_2 = 'ptb_5c_shift'
+dir_out = 'incart_ptb_5c'
 key_x = 'X'
 key_y = 'Y'
 x_shape = []

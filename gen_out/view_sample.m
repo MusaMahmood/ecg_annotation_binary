@@ -1,6 +1,6 @@
 clr;
 %  Load Data:
-sample = 3000;
+sample = 9000;
 fn = ['gen_samples_e' num2str(sample) '.mat'];
 load(fn);
 

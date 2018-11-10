@@ -7,13 +7,12 @@ import os
 
 import numpy as np
 import tensorflow as tf
+from keras import optimizers, regularizers
 from keras.backend import tensorflow_backend as tf_backend
-from keras.layers import Conv1D, LeakyReLU, Input, Concatenate
+from keras.layers import Bidirectional, CuDNNLSTM, BatchNormalization
+from keras.layers import Conv1D, Dense, Reshape
 from keras.layers import Dropout
-from keras.layers.convolutional import UpSampling1D
-from keras.models import Model, load_model
-from keras.optimizers import Adam
-from keras_contrib.layers.normalization import InstanceNormalization
+from keras.models import load_model, Sequential
 from scipy.io import savemat
 from sklearn.model_selection import train_test_split
 
@@ -23,13 +22,13 @@ import tf_shared_k as tfs
 # Instance Normalization: https://arxiv.org/abs/1701.02096
 
 # Setup:
-TRAIN = True
+TRAIN = False
 TEST = True
-SAVE_PREDICTIONS = True
+SAVE_PREDICTIONS = False
 SAVE_HIDDEN = False
 EXPORT_OPT_BINARY = False
 
-DATASET = 'combined_v2'
+DATASET = 'combined'
 
 batch_size = 256
 epochs = 10
@@ -39,26 +38,13 @@ num_channels = 1
 num_classes = 0
 data_directory = ''
 
-if DATASET == 'mit':
-    num_classes = 5
-    num_channels = 2
-    data_directory = 'data/extended_5_class/mit_bih_tlabeled_w8s_fixed_all'
-elif DATASET == 'ptb':
-    num_classes = 2
-    data_directory = 'data/ptb_ecg_1ch_temporal_labels/lead_v2_all'
-elif DATASET == 'ptb6':
-    num_classes = 6
-    data_directory = 'data/ptb_6class_temporal/lead_v2_all'
-elif DATASET == 'incart':
-    num_classes = 5
-    data_directory = 'data/incartdb_v1_all'
-elif DATASET == 'combined' or DATASET == 'combined_v2':
+if DATASET == 'combined' or DATASET == 'combined_v2':
     num_classes = 2
     data_directory = 'data/incart_ptb_all'
 
 learn_rate = 0.0002
 
-description = DATASET + '_annotate'
+description = DATASET + '_annotate_lstm'
 keras_model_name = description + '.h5'
 model_dir = tfs.prep_dir('model_exports/')
 keras_file_location = model_dir + keras_model_name
@@ -84,38 +70,22 @@ if num_channels < 2 and not DATASET == 'incart':
 x_train, x_test, y_train, y_test = train_test_split(x_tt, y_tt, train_size=0.8, random_state=1)
 
 
-def build_annotator(input_channels=1, output_channels=1):
-    def conv_layer(layer_input, filters, kernel_size=5, strides=2):
-        d = Conv1D(filters, kernel_size, strides=strides, padding='same')(layer_input)
-        d = LeakyReLU(alpha=0.20)(d)
-        d = InstanceNormalization()(d)
-        return d
-
-    def deconv_layer(layer_input, skip_input, filters, f_size=4, dropout_rate=0):
-        u = UpSampling1D(size=2)(layer_input)
-        u = Conv1D(filters, f_size, strides=1, padding='same', activation='relu')(u)
-        if dropout_rate:
-            u = Dropout(dropout_rate)(u)
-        u = InstanceNormalization()(u)
-        u = Concatenate()([u, skip_input])
-        return u
-
-    # Input samples
-    input_samples = Input(shape=(input_length, input_channels))
-
-    # Downsampling:
-    d1 = conv_layer(input_samples, 32, 8, 2)
-    d2 = conv_layer(d1, 64, 8, 2)
-    d3 = conv_layer(d2, 128, 8, 2)
-    d4 = conv_layer(d3, 256, 8, 2)
-
-    # Now Upsample:
-    u1 = deconv_layer(d4, d3, 128, f_size=8)
-    u2 = deconv_layer(u1, d2, 64, f_size=8)
-    u3 = deconv_layer(u2, d1, 32, f_size=8)
-    u4 = UpSampling1D(size=2)(u3)
-    output_samples = Conv1D(output_channels, kernel_size=8, strides=1, padding='same', activation='softmax')(u4)
-    return Model(input_samples, output_samples)
+def build_annotator(output_channels=1):
+    model = Sequential()
+    model.add(Conv1D(32, 16, strides=2, padding='same', activation='relu', input_shape=(input_length, num_channels)))
+    model.add(Conv1D(64, 8, strides=2, padding='same', activation='relu'))
+    model.add(Reshape(target_shape=(seq_length, 64 // 4)))
+    model.add(Bidirectional(CuDNNLSTM(32, return_sequences=True)))
+    model.add(Dropout(0.2))
+    model.add(BatchNormalization())
+    model.add(Dense(64, activation='relu', kernel_regularizer=regularizers.l2(l=0.01)))
+    model.add(Dropout(0.2))
+    model.add(BatchNormalization())
+    model.add(Dense(output_channels, activation='softmax'))
+    adam = optimizers.adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
+    model.compile(loss='categorical_crossentropy', optimizer=adam, metrics=['accuracy'])
+    print(model.summary())
+    return model
 
 
 model = []
@@ -125,9 +95,7 @@ with tf.device('/gpu:0'):
         if os.path.isfile(keras_file_location):
             model = load_model(keras_file_location)
         else:
-            model = build_annotator(input_channels=num_channels, output_channels=num_classes)
-            adam = Adam(lr=learn_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
-            model.compile(loss='categorical_crossentropy', optimizer=adam, metrics=['accuracy'])
+            model = build_annotator(output_channels=num_classes)
 
         print(model.summary())
 
