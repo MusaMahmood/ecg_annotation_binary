@@ -17,6 +17,8 @@
 #include "rearrange_5c_types.h"
 
 // Function Declarations
+extern void maximize_probs(const float X[10000], double max_prob[10000]);
+extern void maximize_probs_float(const float X[10000], float max_prob[10000]);
 extern void rearrange_5c(const float input_array[10000], float rearranged[10000]);
 extern void rearrange_2c(const float input_array[4000], float rearranged[4000]);
 extern void get_class_distribution(const float input_array[4000], double

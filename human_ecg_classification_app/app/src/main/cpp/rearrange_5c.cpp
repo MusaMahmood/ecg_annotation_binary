@@ -14,7 +14,7 @@
 #include "rearrange_5c.h"
 
 // Function Prototypes:
-static void maximize_probs(const float X[10000], double max_prob[10000]);
+//static void maximize_probs(const float X[10000], double max_prob[10000]);
 static void sum(const double x[10000], double y[5]);
 
 
@@ -26,7 +26,49 @@ static void sum(const double x[10000], double y[5]);
 //                double max_prob[10000]
 // Return Type  : void
 //
-static void maximize_probs(const float X[10000], double max_prob[10000])
+void maximize_probs_float(const float X[10000], float max_prob[10000]) {
+    int i;
+    int ixstart;
+    float mtmp;
+    int itmp;
+    int ix;
+    boolean_T exitg1;
+    memset(&max_prob[0], 0, 10000U * sizeof(float));
+    for (i = 0; i < 2000; i++) {
+        ixstart = 1;
+        mtmp = X[i];
+        itmp = 0;
+        if (rtIsNaNF(X[i])) {
+            ix = 2;
+            exitg1 = false;
+            while ((!exitg1) && (ix < 6)) {
+                ixstart = ix;
+                if (!rtIsNaNF(X[i + 2000 * (ix - 1)])) {
+                    mtmp = X[i + 2000 * (ix - 1)];
+                    itmp = ix - 1;
+                    exitg1 = true;
+                } else {
+                    ix++;
+                }
+            }
+        }
+
+        if (ixstart < 5) {
+            while (ixstart + 1 < 6) {
+                if (X[i + 2000 * ixstart] > mtmp) {
+                    mtmp = X[i + 2000 * ixstart];
+                    itmp = ixstart;
+                }
+
+                ixstart++;
+            }
+        }
+
+        max_prob[i + 2000 * itmp] = 1.0;
+    }
+}
+
+void maximize_probs(const float X[10000], double max_prob[10000])
 {
     int i;
     int ixstart;

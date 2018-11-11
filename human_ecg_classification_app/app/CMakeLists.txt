@@ -32,6 +32,7 @@ add_library( # Sets the name of the library.
                 src/main/cpp/ecg_bandstop_250Hz.cpp
                 src/main/cpp/ecg_filt_rescale.cpp
                 src/main/cpp/rearrange_5c.cpp
+                src/main/cpp/smooth_probs.cpp
 
 
                 # Executor
