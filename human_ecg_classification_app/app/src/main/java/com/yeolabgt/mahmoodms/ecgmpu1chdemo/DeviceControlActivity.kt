@@ -117,11 +117,14 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             System.arraycopy(outputProbReshaped, 4000, outputProbClass2, 0, 2000)
             System.arraycopy(outputProbReshaped, 6000, outputProbClass3, 0, 2000)
             System.arraycopy(outputProbReshaped, 8000, outputProbClass4, 0, 2000)
-            val s = "C0: ${outputProbClass0.sum()} \n" +
+            val yArray = jgetClassDist(outputProbReshaped)
+            /*"C0: ${outputProbClass0.sum()} \n" +
                     "C1: ${outputProbClass1.sum()} \n" +
                     "C2: ${outputProbClass2.sum()} \n" +
                     "C3: ${outputProbClass3.sum()} \n" +
-                    "C4: ${outputProbClass4.sum()} \n"
+                    "C4: ${outputProbClass4.sum()} \n" +*/
+            val s = "Output Class: ${yArray[0]} \n" +
+                    "Array: ${Arrays.toString(yArray.slice(1..5).toFloatArray())}"
             runOnUiThread { classOutputText.text = s }
             // Save data:
             mTensorflowOutputsSaveFile?.writeToDiskFloat(inputArray, outputProbClass0, outputProbClass1, outputProbClass2, outputProbClass3, outputProbClass4)
@@ -344,8 +347,8 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
     private fun setupGraph() {
         // Initialize our XYPlot reference:
-        mGraphAdapterCh1 = GraphAdapter(1250, "ECG Data Ch 1", false, Color.BLUE) //Color.parseColor("#19B52C") also, RED, BLUE, etc.
-        mGraphAdapterCh2 = GraphAdapter(1250, "ECG Data Ch 2", false, Color.RED) //Color.parseColor("#19B52C") also, RED, BLUE, etc.
+        mGraphAdapterCh1 = GraphAdapter(1250, "ECG Data Ch 1", false, Color.BLUE)
+        mGraphAdapterCh2 = GraphAdapter(1250, "ECG Data Ch 2", false, Color.RED)
         mGraphAdapterMotionAX = GraphAdapter(375, "Acc X", false, Color.RED)
         mGraphAdapterMotionAY = GraphAdapter(375, "Acc Y", false, Color.GREEN)
         mGraphAdapterMotionAZ = GraphAdapter(375, "Acc Z", false, Color.BLUE)
@@ -593,8 +596,11 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             addToGraphBuffer(mCh1!!, mGraphAdapterCh1)
             mPrimarySaveDataFile!!.writeToDisk(mCh1!!.characteristicDataPacketBytes)
             // For every 2000 dp recieved, run classification model.
-            if (mCh1!!.totalDataPointsReceived % 1040 == 0 && mCh1!!.totalDataPointsReceived != 0) {
+            //TODO: FIX THIS, it triggers in the following arrangement: [3120, 6240, 9360 ... ] (12+ seconds).
+            Log.e(TAG, "mCh1.dataPointCounterClassify: ${mCh1!!.dataPointCounterClassify}")
+            if (mCh1!!.dataPointCounterClassify > 1000) {
                 Log.e(TAG, "Total datapoints: ${mCh1!!.totalDataPointsReceived}")
+                mCh1?.resetCounterClassify()
                 val classifyTaskThread = Thread(mClassifyThread)
                 classifyTaskThread.start()
             }

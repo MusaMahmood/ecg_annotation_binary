@@ -64,13 +64,13 @@ JNIEXPORT jfloatArray JNICALL
 Java_com_yeolabgt_mahmoodms_ecgmpu1chdemo_DeviceControlActivity_jgetClassDist(
         JNIEnv *env, jobject jobject1, jfloatArray data) {
     jfloat *X = env->GetFloatArrayElements(data, NULL);
-    float Y[3];
+    float Y[6];
     double tmp = 0.0;
     if (X == NULL) LOGE("ERROR - C_ARRAY IS NULL");
-    jfloatArray m_result = env->NewFloatArray(3);
-    get_class_distribution(X, &tmp, &Y[1]);
+    jfloatArray m_result = env->NewFloatArray(6);
+    get_class_distribution_c5(X, &tmp, &Y[1]);
     Y[0] = (float) tmp;
-    env->SetFloatArrayRegion(m_result, 0, 3, Y);
+    env->SetFloatArrayRegion(m_result, 0, 6, Y);
     return m_result;
 }
 }
