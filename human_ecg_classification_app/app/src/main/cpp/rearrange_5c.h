@@ -21,6 +21,8 @@ extern void rearrange_5c(const float input_array[10000], float rearranged[10000]
 extern void rearrange_2c(const float input_array[4000], float rearranged[4000]);
 extern void get_class_distribution(const float input_array[4000], double
 *b_index, float scores[2]);
+
+extern void get_class_distribution_c5(const float input_array[10000], double *b_index, float scores[5]);
 extern void rearrange_5c_initialize();
 extern void rearrange_5c_terminate();
 
