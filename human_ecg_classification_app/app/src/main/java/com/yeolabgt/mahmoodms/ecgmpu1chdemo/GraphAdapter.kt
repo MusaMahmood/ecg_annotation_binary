@@ -63,6 +63,13 @@ internal class GraphAdapter
         }
     }
 
+    fun plot(y: Double) {
+        while (series!!.size() > seriesHistoryDataPoints - 1) {
+            series!!.removeFirst()
+        }
+        series!!.addLast(null, y)
+    }
+
     private fun plot(x: Double, y: Double) {
         while (series!!.size() > seriesHistoryDataPoints - 1) {
             series!!.removeFirst()
