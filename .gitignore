@@ -44,5 +44,4 @@ graph_rat/
 *.pb
 _tf_annotate/model_out/
 *.idea/
-*.xml
 .idea/vcs.xml
