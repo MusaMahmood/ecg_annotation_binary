@@ -1,12 +1,7 @@
 package com.yeolabgt.mahmoodms.ecgmpu1chdemo
 
 import android.app.Activity
-import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothGatt
-import android.bluetooth.BluetoothGattCharacteristic
-import android.bluetooth.BluetoothGattDescriptor
-import android.bluetooth.BluetoothManager
-import android.bluetooth.BluetoothProfile
+import android.bluetooth.*
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
@@ -26,14 +21,11 @@ import android.view.WindowManager
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
-import android.widget.ToggleButton
-
 import com.androidplot.util.Redrawer
 import com.yeolabgt.mahmoodms.actblelibrary.ActBle
-import kotlinx.android.synthetic.main.activity_device_control.*
+import kotlinx.android.synthetic.main.activity_device_control_classify.*
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface
 import java.io.File
-
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
@@ -47,7 +39,6 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     // Graphing Variables:
     private var mGraphInitializedBoolean = false
     private var mGraphAdapterCh1: GraphAdapter? = null
-    private var mGraphAdapterCh2: GraphAdapter? = null
     private var mGraphAdapterMotionAX: GraphAdapter? = null
     private var mGraphAdapterMotionAY: GraphAdapter? = null
     private var mGraphAdapterMotionAZ: GraphAdapter? = null
@@ -67,7 +58,6 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     //UI Elements - TextViews, Buttons, etc
     private var mBatteryLevel: TextView? = null
     private var mDataRate: TextView? = null
-    private var mChannelSelect: ToggleButton? = null
     private var menu: Menu? = null
     //Data throughput counter
     private var mLastTime: Long = 0
@@ -118,13 +108,13 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             System.arraycopy(outputProbReshaped, 6000, outputProbClass3, 0, 2000)
             System.arraycopy(outputProbReshaped, 8000, outputProbClass4, 0, 2000)
             val outputProbsSmoothed = jreturnSmoothedLabels(outputProbReshaped)
-            val yArray = jgetClassDist(outputProbReshaped)
-            val yArray2 = jgetClassDist(outputProbsSmoothed)
-            val s = "Output Class: ${yArray[0]} \n" +
-                    "Array: ${Arrays.toString(yArray.slice(1..5).toFloatArray())}" +
-                    "Smoothed Output Class: ${yArray2[0]} \n" +
-                    "Smoothed Array: ${Arrays.toString(yArray2.slice(1..5).toFloatArray())}"
-            runOnUiThread { classOutputText.text = s }
+//            val yArray = jgetClassDist(outputProbReshaped)
+//            val yArray2 = jgetClassDist(outputProbsSmoothed)
+//            val s = "Output Class: ${yArray[0]} \n" +
+//                    "Array: ${Arrays.toString(yArray.slice(1..5).toFloatArray())}" +
+//                    "Smoothed Output Class: ${yArray2[0]} \n" +
+//                    "Smoothed Array: ${Arrays.toString(yArray2.slice(1..5).toFloatArray())}"
+//            runOnUiThread { classOutputText.text = s }
             // Save data:
             mTensorflowOutputsSaveFile?.writeToDiskFloat(inputArray, outputProbClass0, outputProbClass1, outputProbClass2, outputProbClass3, outputProbClass4)
         }
@@ -159,9 +149,12 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_device_control)
+
+//        setContentView(R.layout.activity_device_control)
         //Set orientation of device based on screen type/size:
-        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+//        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        setContentView(R.layout.activity_device_control_classify)
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         //Receive Intents:
         val intent = intent
         deviceMacAddresses = intent.getStringArrayExtra(MainActivity.INTENT_DEVICES_KEY)
@@ -191,16 +184,9 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         if (!mBleInitializedBoolean) initializeBluetoothArray()
         mLastTime = System.currentTimeMillis()
         //UI Listeners
-        mChannelSelect = findViewById(R.id.toggleButtonGraph)
-        mChannelSelect!!.setOnCheckedChangeListener { _, b ->
-            mGraphAdapterCh1!!.clearPlot()
-            mGraphAdapterCh2!!.clearPlot()
-            mGraphAdapterCh1!!.plotData = b
-            mGraphAdapterCh2!!.plotData = b
-        }
         mExportButton.setOnClickListener { exportData() }
         // Tensorflow Switch
-        tensorflowClassificationSwitch.setOnCheckedChangeListener { _, b ->
+        tensorflowClassificationToggle.setOnCheckedChangeListener { _, b ->
             if (b) {
                 enableTensorflowModel()
             } else {
@@ -347,13 +333,11 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     private fun setupGraph() {
         // Initialize our XYPlot reference:
         mGraphAdapterCh1 = GraphAdapter(1250, "ECG Data Ch 1", false, Color.BLUE)
-        mGraphAdapterCh2 = GraphAdapter(1250, "ECG Data Ch 2", false, Color.RED)
         mGraphAdapterMotionAX = GraphAdapter(375, "Acc X", false, Color.RED)
         mGraphAdapterMotionAY = GraphAdapter(375, "Acc Y", false, Color.GREEN)
         mGraphAdapterMotionAZ = GraphAdapter(375, "Acc Z", false, Color.BLUE)
         //PLOT CH1 By default
         mGraphAdapterCh1!!.setPointWidth(2.toFloat())
-        mGraphAdapterCh2!!.setPointWidth(2.toFloat())
         mGraphAdapterMotionAX?.setPointWidth(2.toFloat())
         mGraphAdapterMotionAY?.setPointWidth(2.toFloat())
         mGraphAdapterMotionAZ?.setPointWidth(2.toFloat())
@@ -376,10 +360,8 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         mGraphAdapterMotionAZ?.setSeriesHistoryDataPoints(375)
 
         mGraphAdapterCh1!!.setxAxisIncrementFromSampleRate(mSampleRate)
-        mGraphAdapterCh2!!.setxAxisIncrementFromSampleRate(mSampleRate)
 
         mGraphAdapterCh1!!.setSeriesHistoryDataPoints(1250)
-        mGraphAdapterCh2!!.setSeriesHistoryDataPoints(1250)
     }
 
     private fun setNameAddress(name_action: String?, address_action: String?) {
@@ -492,9 +474,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             }
 
             mTimeDomainPlotAdapterCh1!!.xyPlot?.redraw()
-            mChannelSelect!!.isChecked = chSel
             mGraphAdapterCh1!!.plotData = chSel
-            mGraphAdapterCh2!!.plotData = chSel
         }
         super.onActivityResult(requestCode, resultCode, data)
     }
@@ -592,7 +572,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             val mNewEEGdataBytes = characteristic.value
             getDataRateBytes(mNewEEGdataBytes.size)
             mCh1!!.handleNewData(mNewEEGdataBytes)
-            addToGraphBuffer(mCh1!!, mGraphAdapterCh1)
+//            addToGraphBuffer(mCh1!!, mGraphAdapterCh1)
             mPrimarySaveDataFile!!.writeToDisk(mCh1!!.characteristicDataPacketBytes)
             // For every 2000 dp recieved, run classification model.
             //TODO: FIX THIS, it triggers in the following arrangement: [3120, 6240, 9360 ... ] (12+ seconds).
@@ -622,42 +602,42 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         }
     }
 
-    private fun addToGraphBuffer(dataChannel: DataChannel, graphAdapter: GraphAdapter?) {
-        if (mFilterData && dataChannel.totalDataPointsReceived > 4 * mSampleRate/* && mSampleRate < 1000*/) {
-            val graphBufferLength = 4 * 250
-            //TODO: Downsample, then filter, then plot:
-            val filterArray = jdownSample(dataChannel.classificationBuffer, mSampleRate)
-            graphAdapter?.setSeriesHistoryDataPoints(graphBufferLength)
-            val filteredData = jecgBandStopFilter(filterArray)
-            graphAdapter!!.clearPlot()
-
-            for (i in filteredData.indices) { // gA.addDataPointTimeDomain(y,x)
-                graphAdapter.addDataPointTimeDomainAlt(filteredData[i], dataChannel.totalDataPointsReceived - (graphBufferLength - 1) + i)
-            }
-        } else {
-            if (dataChannel.dataBuffer != null) {
-                graphAdapter?.setSeriesHistoryDataPoints(1250)
-                if (mPrimarySaveDataFile!!.resolutionBits == 24) {
-                    var i = 0
-                    while (i < dataChannel.dataBuffer!!.size / 3) {
-                        graphAdapter!!.addDataPointTimeDomain(DataChannel.bytesToDouble(dataChannel.dataBuffer!![3 * i],
-                                dataChannel.dataBuffer!![3 * i + 1], dataChannel.dataBuffer!![3 * i + 2]),
-                                dataChannel.totalDataPointsReceived - dataChannel.dataBuffer!!.size / 3 + i)
-                        i += graphAdapter.sampleRate / 250
-                    }
-                } else if (mPrimarySaveDataFile!!.resolutionBits == 16) {
-                    var i = 0
-                    while (i < dataChannel.dataBuffer!!.size / 2) {
-                        graphAdapter!!.addDataPointTimeDomain(DataChannel.bytesToDouble(dataChannel.dataBuffer!![2 * i],
-                                dataChannel.dataBuffer!![2 * i + 1]),
-                                dataChannel.totalDataPointsReceived - dataChannel.dataBuffer!!.size / 2 + i)
-                        i += graphAdapter.sampleRate / 250
-                    }
-                }
-            }
-        }
-        dataChannel.resetBuffer()
-    }
+//    private fun addToGraphBuffer(dataChannel: DataChannel, graphAdapter: GraphAdapter?) {
+//        if (mFilterData && dataChannel.totalDataPointsReceived > 4 * mSampleRate/* && mSampleRate < 1000*/) {
+//            val graphBufferLength = 4 * 250
+//            //TODO: Downsample, then filter, then plot:
+//            val filterArray = jdownSample(dataChannel.classificationBuffer, mSampleRate)
+//            graphAdapter?.setSeriesHistoryDataPoints(graphBufferLength)
+//            val filteredData = jecgBandStopFilter(filterArray)
+//            graphAdapter!!.clearPlot()
+//
+//            for (i in filteredData.indices) { // gA.addDataPointTimeDomain(y,x)
+//                graphAdapter.addDataPointTimeDomainAlt(filteredData[i], dataChannel.totalDataPointsReceived - (graphBufferLength - 1) + i)
+//            }
+//        } else {
+//            if (dataChannel.dataBuffer != null) {
+//                graphAdapter?.setSeriesHistoryDataPoints(1250)
+//                if (mPrimarySaveDataFile!!.resolutionBits == 24) {
+//                    var i = 0
+//                    while (i < dataChannel.dataBuffer!!.size / 3) {
+//                        graphAdapter!!.addDataPointTimeDomain(DataChannel.bytesToDouble(dataChannel.dataBuffer!![3 * i],
+//                                dataChannel.dataBuffer!![3 * i + 1], dataChannel.dataBuffer!![3 * i + 2]),
+//                                dataChannel.totalDataPointsReceived - dataChannel.dataBuffer!!.size / 3 + i)
+//                        i += graphAdapter.sampleRate / 250
+//                    }
+//                } else if (mPrimarySaveDataFile!!.resolutionBits == 16) {
+//                    var i = 0
+//                    while (i < dataChannel.dataBuffer!!.size / 2) {
+//                        graphAdapter!!.addDataPointTimeDomain(DataChannel.bytesToDouble(dataChannel.dataBuffer!![2 * i],
+//                                dataChannel.dataBuffer!![2 * i + 1]),
+//                                dataChannel.totalDataPointsReceived - dataChannel.dataBuffer!!.size / 2 + i)
+//                        i += graphAdapter.sampleRate / 250
+//                    }
+//                }
+//            }
+//        }
+//        dataChannel.resetBuffer()
+//    }
 
     private fun addToGraphBufferMPU(dataChannel: DataChannel) {
         if (dataChannel.dataBuffer != null) {
