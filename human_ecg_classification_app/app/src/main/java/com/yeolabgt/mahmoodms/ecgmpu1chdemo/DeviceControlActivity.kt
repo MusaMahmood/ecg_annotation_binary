@@ -117,14 +117,13 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             System.arraycopy(outputProbReshaped, 4000, outputProbClass2, 0, 2000)
             System.arraycopy(outputProbReshaped, 6000, outputProbClass3, 0, 2000)
             System.arraycopy(outputProbReshaped, 8000, outputProbClass4, 0, 2000)
+            val outputProbsSmoothed = jreturnSmoothedLabels(outputProbReshaped)
             val yArray = jgetClassDist(outputProbReshaped)
-            /*"C0: ${outputProbClass0.sum()} \n" +
-                    "C1: ${outputProbClass1.sum()} \n" +
-                    "C2: ${outputProbClass2.sum()} \n" +
-                    "C3: ${outputProbClass3.sum()} \n" +
-                    "C4: ${outputProbClass4.sum()} \n" +*/
+            val yArray2 = jgetClassDist(outputProbsSmoothed)
             val s = "Output Class: ${yArray[0]} \n" +
-                    "Array: ${Arrays.toString(yArray.slice(1..5).toFloatArray())}"
+                    "Array: ${Arrays.toString(yArray.slice(1..5).toFloatArray())}" +
+                    "Smoothed Output Class: ${yArray2[0]} \n" +
+                    "Smoothed Array: ${Arrays.toString(yArray2.slice(1..5).toFloatArray())}"
             runOnUiThread { classOutputText.text = s }
             // Save data:
             mTensorflowOutputsSaveFile?.writeToDiskFloat(inputArray, outputProbClass0, outputProbClass1, outputProbClass2, outputProbClass3, outputProbClass4)
@@ -597,7 +596,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             mPrimarySaveDataFile!!.writeToDisk(mCh1!!.characteristicDataPacketBytes)
             // For every 2000 dp recieved, run classification model.
             //TODO: FIX THIS, it triggers in the following arrangement: [3120, 6240, 9360 ... ] (12+ seconds).
-            Log.e(TAG, "mCh1.dataPointCounterClassify: ${mCh1!!.dataPointCounterClassify}")
+            //Log.e(TAG, "mCh1.dataPointCounterClassify: ${mCh1!!.dataPointCounterClassify}")
             if (mCh1!!.dataPointCounterClassify > 1000) {
                 Log.e(TAG, "Total datapoints: ${mCh1!!.totalDataPointsReceived}")
                 mCh1?.resetCounterClassify()
@@ -854,9 +853,12 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
     private external fun jrearrange5c(data: FloatArray): FloatArray
 
-    private external fun jrearrange2c(data: FloatArray): FloatArray
-
     private external fun jgetClassDist(data: FloatArray): FloatArray
+
+    // input/outputs: (2000, 5), as a (10000) array
+    private external fun jreturnSmoothedLabels(data: FloatArray): FloatArray
+
+//    private external fun jrearrange2c(data: FloatArray): FloatArray
 
     companion object {
         const val HZ = "0 Hz"

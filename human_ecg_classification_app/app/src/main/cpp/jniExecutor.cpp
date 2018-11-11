@@ -8,6 +8,7 @@
 #include "ecg_bandstop_250Hz.h"
 #include "ecg_filt_rescale.h"
 #include "rearrange_5c.h"
+#include "smooth_probs.h"
 
 /*Additional Includes*/
 #include <jni.h>
@@ -75,6 +76,22 @@ Java_com_yeolabgt_mahmoodms_ecgmpu1chdemo_DeviceControlActivity_jgetClassDist(
 }
 }
 
+extern "C" {
+JNIEXPORT jfloatArray JNICALL
+Java_com_yeolabgt_mahmoodms_ecgmpu1chdemo_DeviceControlActivity_jreturnSmoothedLabels(
+        JNIEnv *env, jobject jobject1, jfloatArray data) {
+    jfloat *X = env->GetFloatArrayElements(data, NULL);
+    float max_prob[10000];
+    float Y_out[10000];
+    if (X == NULL) LOGE("ERROR - C_ARRAY IS NULL");
+    jfloatArray m_result = env->NewFloatArray(10000);
+    maximize_probs_float(X, max_prob);
+    // Pass maximized probs to smoother:
+    smooth_probs(max_prob, Y_out);
+    env->SetFloatArrayRegion(m_result, 0, 10000, Y_out);
+    return m_result;
+}
+}
 
 extern "C" {
 JNIEXPORT jdoubleArray JNICALL
