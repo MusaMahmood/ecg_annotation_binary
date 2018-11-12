@@ -116,7 +116,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             System.arraycopy(outputProbReshaped, 8000, outputProbClass4, 0, 2000)
 
             // Save data:
-            mTensorflowOutputsSaveFile?.writeToDiskFloat(inputArray, outputProbClass0, outputProbClass1, outputProbClass2, outputProbClass3, outputProbClass4)
+//            mTensorflowOutputsSaveFile?.writeToDiskFloat(inputArray, outputProbClass0, outputProbClass1, outputProbClass2, outputProbClass3, outputProbClass4)
             val outputProbsSmoothed = jreturnSmoothedLabels(outputProbReshaped)
             System.arraycopy(outputProbsSmoothed, 0, outputProbClass0, 0, 2000)
             System.arraycopy(outputProbsSmoothed, 2000, outputProbClass1, 0, 2000)
@@ -615,17 +615,16 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             val mNewEEGdataBytes = characteristic.value
             getDataRateBytes(mNewEEGdataBytes.size)
             mCh1!!.handleNewData(mNewEEGdataBytes)
-//            addToGraphBuffer(mCh1!!, mGraphAdapterCh1)
             mPrimarySaveDataFile!!.writeToDisk(mCh1!!.characteristicDataPacketBytes)
             // For every 2000 dp recieved, run classification model.
-            //TODO: FIX THIS, it triggers in the following arrangement: [3120, 6240, 9360 ... ] (12+ seconds).
-            //Log.e(TAG, "mCh1.dataPointCounterClassify: ${mCh1!!.dataPointCounterClassify}")
-            if (mCh1!!.dataPointCounterClassify > 1000 && mCh1!!.totalDataPointsReceived > 2000) {
-                Log.e(TAG, "Total datapoints: ${mCh1!!.totalDataPointsReceived}")
+            //TODO: CHANGE THIS SO IT HAPPENS AS OFTEN AS POSSIBLE.
+            if (mCh1!!.dataPointCounterClassify > 500 && mCh1!!.totalDataPointsReceived > 2000) {
+                Log.e(TAG, "mClassifyThread Start Time")
                 mCurrentIndex = mCh1!!.totalDataPointsReceived - 2000
                 mCh1?.resetCounterClassify()
                 val classifyTaskThread = Thread(mClassifyThread)
                 classifyTaskThread.start()
+                Log.e(TAG, "mClassifyThread End Time")
             }
         }
 
