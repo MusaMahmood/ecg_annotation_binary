@@ -28,7 +28,7 @@ internal class XYPlotAdapter {
      */
     constructor(findViewByID: View, domainLabel: String, rangeLabel: String, domainIncrement: Double) {
         this.xyPlot = findViewByID as XYPlot
-        this.xyPlot!!.setDomainBoundaries(0, 1, BoundaryMode.AUTO) //Default
+        this.xyPlot!!.setDomainBoundaries(0, 8, BoundaryMode.AUTO) //Default
         this.xyPlot!!.domainStepMode = StepMode.INCREMENT_BY_VAL
         this.xyPlot!!.domainStepValue = domainIncrement
         //Default Config:
@@ -63,8 +63,35 @@ internal class XYPlotAdapter {
         this.xyPlot!!.setRangeStep(StepMode.SUBDIVIDE, 5.0)
     }
 
+    constructor(findViewByID: View, plotImplicitXVals: Boolean, historySize: Int, domainLabel: String, rangeLabel: String) {
+        this.xyPlot = findViewByID as XYPlot
+        val historySeconds = historySize / 250
+        if (plotImplicitXVals) {
+            this.xyPlot!!.setDomainBoundaries(0, historySize, BoundaryMode.FIXED)
+            this.xyPlot!!.domainStepMode = StepMode.INCREMENT_BY_VAL
+            this.xyPlot!!.domainStepValue = (historySize / 5).toDouble()
+        } else {
+            this.xyPlot!!.setDomainBoundaries(0, historySeconds, BoundaryMode.AUTO)
+            this.xyPlot!!.domainStepMode = StepMode.INCREMENT_BY_VAL
+            this.xyPlot!!.domainStepValue = (historySeconds / 4).toDouble()
+        }
+        //Default Config:
+        this.xyPlot!!.rangeStepMode = StepMode.INCREMENT_BY_VAL
+        this.xyPlot!!.setDomainLabel(domainLabel)
+        this.xyPlot!!.setRangeLabel(rangeLabel)
+        this.xyPlot!!.graph.getLineLabelStyle(XYGraphWidget.Edge.LEFT).format = DecimalFormat("#.###")
+        this.xyPlot!!.graph.getLineLabelStyle(XYGraphWidget.Edge.BOTTOM).format = DecimalFormat("#")
+        this.xyPlot!!.setRangeBoundaries(-0.004, 0.004, BoundaryMode.AUTO)
+        this.xyPlot!!.setRangeStep(StepMode.SUBDIVIDE, 5.0)
+    }
+
     fun setXyPlotDomainIncrement(domainIncrement: Double) {
         this.xyPlot!!.domainStepValue = domainIncrement
+    }
+
+    fun setRangeStepValue(rangeIncrement: Double) {
+        this.xyPlot?.rangeStepMode = StepMode.SUBDIVIDE
+        this.xyPlot?.rangeStepValue = rangeIncrement
     }
 
     fun setXyPlotVisibility(visible: Boolean) {
