@@ -116,7 +116,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             System.arraycopy(outputProbReshaped, 8000, outputProbClass4, 0, 2000)
 
             // Save data:
-//            mTensorflowOutputsSaveFile?.writeToDiskFloat(inputArray, outputProbClass0, outputProbClass1, outputProbClass2, outputProbClass3, outputProbClass4)
+            mTensorflowOutputsSaveFile?.writeToDiskFloat(inputArray, outputProbClass0, outputProbClass1, outputProbClass2, outputProbClass3, outputProbClass4)
             val outputProbsSmoothed = jreturnSmoothedLabels(outputProbReshaped)
             System.arraycopy(outputProbsSmoothed, 0, outputProbClass0, 0, 2000)
             System.arraycopy(outputProbsSmoothed, 2000, outputProbClass1, 0, 2000)
@@ -836,10 +836,6 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             }
         }
     }
-
-    private external fun jdownSample(data: DoubleArray, sampleRate: Int): DoubleArray
-
-    private external fun jecgBandStopFilter(data: DoubleArray): DoubleArray
 
     private external fun jmainInitialization(initialize: Boolean): Int
 
