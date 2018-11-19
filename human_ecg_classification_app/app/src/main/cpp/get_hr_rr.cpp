@@ -5,7 +5,7 @@
 // File: get_hr_rr.cpp
 //
 // MATLAB Coder version            : 3.3
-// C/C++ source code generated on  : 19-Nov-2018 14:27:31
+// C/C++ source code generated on  : 19-Nov-2018 15:06:34
 //
 
 // Include Files
@@ -44,11 +44,13 @@ static void c_findPeaksSeparatedByMoreThanM(const int iPk_size[1], int idx_data[
 static void c_flipud(double x[7536]);
 static double c_mean(const double x[4096]);
 static void conv(const double A[7500], const double B[38], double C[7463]);
+static void d_filtfilt(const double x_in[7500], double y_out[7500]);
 static void d_findPeaksSeparatedByMoreThanM(const int iPk_size[1], int idx_data[],
   int idx_size[1]);
 static void do_vectors(const int a_data[], const int a_size[1], const int
   b_data[], const int b_size[1], int c_data[], int c_size[1], int ia_data[], int
   ia_size[1], int ib_data[], int ib_size[1]);
+static void ecg_filt_rescale(const double X[7500], float Y[7500]);
 static void fft(const double x[4096], creal_T y[4096]);
 static void filter(const double b[4], const double a[4], const double x[7518],
                    const double zi[3], double y[7518]);
@@ -156,36 +158,45 @@ static void b_filtfilt(const double x_in[7500], double y_out[7500])
 {
   double d2;
   double d3;
-  int i0;
-  double y[7506];
-  double b_y[7506];
-  double dv8[2];
+  int i;
+  double y[7518];
+  double b_y[7518];
+  double a[3];
+  static const double b_a[3] = { -0.95097188792623888, 1.9019437758521933,
+    -0.95097188792596821 };
+
+  static const double dv8[4] = { 0.950971887923409, -2.8529156637702271,
+    2.8529156637702271, -0.950971887923409 };
+
+  static const double dv9[4] = { 1.0, -2.8994795946118641, 2.8039479773829989,
+    -0.904347531392409 };
+
   d2 = 2.0 * x_in[0];
   d3 = 2.0 * x_in[7499];
-  for (i0 = 0; i0 < 3; i0++) {
-    y[i0] = d2 - x_in[3 - i0];
+  for (i = 0; i < 9; i++) {
+    y[i] = d2 - x_in[9 - i];
   }
 
-  memcpy(&y[3], &x_in[0], 7500U * sizeof(double));
-  for (i0 = 0; i0 < 3; i0++) {
-    y[i0 + 7503] = d3 - x_in[7498 - i0];
+  memcpy(&y[9], &x_in[0], 7500U * sizeof(double));
+  for (i = 0; i < 9; i++) {
+    y[i + 7509] = d3 - x_in[7498 - i];
   }
 
-  for (i0 = 0; i0 < 2; i0++) {
-    dv8[i0] = 7.8125 + -16.5625 * (double)i0;
+  for (i = 0; i < 3; i++) {
+    a[i] = b_a[i] * y[0];
   }
 
-  memcpy(&b_y[0], &y[0], 7506U * sizeof(double));
-  b_filter(dv8, b_y, -8.75 * y[0], y);
-  b_flipud(y);
-  for (i0 = 0; i0 < 2; i0++) {
-    dv8[i0] = 7.8125 + -16.5625 * (double)i0;
+  memcpy(&b_y[0], &y[0], 7518U * sizeof(double));
+  filter(dv8, dv9, b_y, a, y);
+  flipud(y);
+  for (i = 0; i < 3; i++) {
+    a[i] = b_a[i] * y[0];
   }
 
-  memcpy(&b_y[0], &y[0], 7506U * sizeof(double));
-  b_filter(dv8, b_y, -8.75 * y[0], y);
-  b_flipud(y);
-  memcpy(&y_out[0], &y[3], 7500U * sizeof(double));
+  memcpy(&b_y[0], &y[0], 7518U * sizeof(double));
+  filter(dv8, dv9, b_y, a, y);
+  flipud(y);
+  memcpy(&y_out[0], &y[9], 7500U * sizeof(double));
 }
 
 //
@@ -214,7 +225,7 @@ static void b_findpeaks(const double Yin[2048], double Ypk_data[], int Ypk_size
   static int ib_data[7463];
   int ib_size[1];
   int c_size[1];
-  double dv14[2048];
+  double dv16[2048];
   int b_c_data[4096];
   b_getAllPeaksCodegen(Yin, iFinite_data, iFinite_size, iInfinite_data,
                        iInfinite_size, iInflect_data, iInflect_size);
@@ -232,7 +243,7 @@ static void b_findpeaks(const double Yin[2048], double Ypk_data[], int Ypk_size
   orderPeaks(Yin, c_data, iPk_data, iPk_size);
   b_keepAtMostNpPeaks(iPk_data, iPk_size);
   for (i3 = 0; i3 < 2048; i3++) {
-    dv14[i3] = 1.0 + (double)i3;
+    dv16[i3] = 1.0 + (double)i3;
   }
 
   c_size[0] = iPk_size[0];
@@ -241,7 +252,7 @@ static void b_findpeaks(const double Yin[2048], double Ypk_data[], int Ypk_size
     b_c_data[i3] = c_data[iPk_data[i3] - 1];
   }
 
-  assignOutputs(Yin, dv14, b_c_data, c_size, Ypk_data, Ypk_size, Xpk_data,
+  assignOutputs(Yin, dv16, b_c_data, c_size, Ypk_data, Ypk_size, Xpk_data,
                 Xpk_size);
 }
 
@@ -606,47 +617,36 @@ static void c_filtfilt(const double x_in[7500], double y_out[7500])
 {
   double d4;
   double d5;
-  int i;
-  double y[7536];
-  double b_y[7536];
-  double a[6];
-  static const double b_a[6] = { -0.00080987995584081535,
-    -0.00080997175999258182, 0.0016199317339117138, 0.0016196642833357288,
-    -0.000809836948677889, -0.00080990735273475081 };
-
-  static const double dv9[7] = { 0.00080989634324999489, 0.0, -0.00242968902975,
-    0.0, 0.00242968902975, 0.0, -0.00080989634324999489 };
-
-  static const double dv10[7] = { 1.0, -5.6021150604502674, 13.08713000005193,
-    -16.320491729646289, 11.459879613995582, -4.2962286527580584,
-    0.671825828913905 };
-
+  int i0;
+  double y[7506];
+  double b_y[7506];
+  double dv10[2];
   d4 = 2.0 * x_in[0];
   d5 = 2.0 * x_in[7499];
-  for (i = 0; i < 18; i++) {
-    y[i] = d4 - x_in[18 - i];
+  for (i0 = 0; i0 < 3; i0++) {
+    y[i0] = d4 - x_in[3 - i0];
   }
 
-  memcpy(&y[18], &x_in[0], 7500U * sizeof(double));
-  for (i = 0; i < 18; i++) {
-    y[i + 7518] = d5 - x_in[7498 - i];
+  memcpy(&y[3], &x_in[0], 7500U * sizeof(double));
+  for (i0 = 0; i0 < 3; i0++) {
+    y[i0 + 7503] = d5 - x_in[7498 - i0];
   }
 
-  for (i = 0; i < 6; i++) {
-    a[i] = b_a[i] * y[0];
+  for (i0 = 0; i0 < 2; i0++) {
+    dv10[i0] = 7.8125 + -16.5625 * (double)i0;
   }
 
-  memcpy(&b_y[0], &y[0], 7536U * sizeof(double));
-  c_filter(dv9, dv10, b_y, a, y);
-  c_flipud(y);
-  for (i = 0; i < 6; i++) {
-    a[i] = b_a[i] * y[0];
+  memcpy(&b_y[0], &y[0], 7506U * sizeof(double));
+  b_filter(dv10, b_y, -8.75 * y[0], y);
+  b_flipud(y);
+  for (i0 = 0; i0 < 2; i0++) {
+    dv10[i0] = 7.8125 + -16.5625 * (double)i0;
   }
 
-  memcpy(&b_y[0], &y[0], 7536U * sizeof(double));
-  c_filter(dv9, dv10, b_y, a, y);
-  c_flipud(y);
-  memcpy(&y_out[0], &y[18], 7500U * sizeof(double));
+  memcpy(&b_y[0], &y[0], 7506U * sizeof(double));
+  b_filter(dv10, b_y, -8.75 * y[0], y);
+  b_flipud(y);
+  memcpy(&y_out[0], &y[3], 7500U * sizeof(double));
 }
 
 //
@@ -731,6 +731,58 @@ static void conv(const double A[7500], const double B[38], double C[7463])
       C[b_k] += B[k] * A[(b_k - k) + 37];
     }
   }
+}
+
+//
+// Arguments    : const double x_in[7500]
+//                double y_out[7500]
+// Return Type  : void
+//
+static void d_filtfilt(const double x_in[7500], double y_out[7500])
+{
+  double d6;
+  double d7;
+  int i;
+  double y[7536];
+  double b_y[7536];
+  double a[6];
+  static const double b_a[6] = { -0.00080987995584081535,
+    -0.00080997175999258182, 0.0016199317339117138, 0.0016196642833357288,
+    -0.000809836948677889, -0.00080990735273475081 };
+
+  static const double dv11[7] = { 0.00080989634324999489, 0.0, -0.00242968902975,
+    0.0, 0.00242968902975, 0.0, -0.00080989634324999489 };
+
+  static const double dv12[7] = { 1.0, -5.6021150604502674, 13.08713000005193,
+    -16.320491729646289, 11.459879613995582, -4.2962286527580584,
+    0.671825828913905 };
+
+  d6 = 2.0 * x_in[0];
+  d7 = 2.0 * x_in[7499];
+  for (i = 0; i < 18; i++) {
+    y[i] = d6 - x_in[18 - i];
+  }
+
+  memcpy(&y[18], &x_in[0], 7500U * sizeof(double));
+  for (i = 0; i < 18; i++) {
+    y[i + 7518] = d7 - x_in[7498 - i];
+  }
+
+  for (i = 0; i < 6; i++) {
+    a[i] = b_a[i] * y[0];
+  }
+
+  memcpy(&b_y[0], &y[0], 7536U * sizeof(double));
+  c_filter(dv11, dv12, b_y, a, y);
+  c_flipud(y);
+  for (i = 0; i < 6; i++) {
+    a[i] = b_a[i] * y[0];
+  }
+
+  memcpy(&b_y[0], &y[0], 7536U * sizeof(double));
+  c_filter(dv11, dv12, b_y, a, y);
+  c_flipud(y);
+  memcpy(&y_out[0], &y[18], 7500U * sizeof(double));
 }
 
 //
@@ -937,6 +989,81 @@ static void do_vectors(const int a_data[], const int a_size[1], const int
 }
 
 //
+// Input: doubles (2000, 1)
+//  Output: Y, single (2000, 1)
+//  Filter is order 3, HPF @ 1 Hz, butterworth. 250 Hz Fs.
+// Arguments    : const double X[7500]
+//                float Y[7500]
+// Return Type  : void
+//
+static void ecg_filt_rescale(const double X[7500], float Y[7500])
+{
+  static double b_X[7500];
+  int ixstart;
+  double mtmp;
+  int ix;
+  boolean_T exitg1;
+  double b_mtmp;
+  filtfilt(X, b_X);
+  ixstart = 1;
+  mtmp = b_X[0];
+  if (rtIsNaN(b_X[0])) {
+    ix = 2;
+    exitg1 = false;
+    while ((!exitg1) && (ix < 7501)) {
+      ixstart = ix;
+      if (!rtIsNaN(b_X[ix - 1])) {
+        mtmp = b_X[ix - 1];
+        exitg1 = true;
+      } else {
+        ix++;
+      }
+    }
+  }
+
+  if (ixstart < 7500) {
+    while (ixstart + 1 < 7501) {
+      if (b_X[ixstart] < mtmp) {
+        mtmp = b_X[ixstart];
+      }
+
+      ixstart++;
+    }
+  }
+
+  ixstart = 1;
+  b_mtmp = b_X[0];
+  if (rtIsNaN(b_X[0])) {
+    ix = 2;
+    exitg1 = false;
+    while ((!exitg1) && (ix < 7501)) {
+      ixstart = ix;
+      if (!rtIsNaN(b_X[ix - 1])) {
+        b_mtmp = b_X[ix - 1];
+        exitg1 = true;
+      } else {
+        ix++;
+      }
+    }
+  }
+
+  if (ixstart < 7500) {
+    while (ixstart + 1 < 7501) {
+      if (b_X[ixstart] > b_mtmp) {
+        b_mtmp = b_X[ixstart];
+      }
+
+      ixstart++;
+    }
+  }
+
+  b_mtmp -= mtmp;
+  for (ixstart = 0; ixstart < 7500; ixstart++) {
+    Y[ixstart] = (float)((b_X[ixstart] - mtmp) / b_mtmp);
+  }
+}
+
+//
 // Arguments    : const double x[4096]
 //                creal_T y[4096]
 // Return Type  : void
@@ -954,7 +1081,7 @@ static void fft(const double x[4096], creal_T y[4096])
   int istart;
   int j;
   double twid_re;
-  static const double dv12[2049] = { 1.0, 0.99999882345170188,
+  static const double dv14[2049] = { 1.0, 0.99999882345170188,
     0.99999529380957619, 0.9999894110819284, 0.99998117528260111,
     0.99997058643097414, 0.9999576445519639, 0.99994234967602391,
     0.9999247018391445, 0.9999047010828529, 0.99988234745421256,
@@ -1638,7 +1765,7 @@ static void fft(const double x[4096], creal_T y[4096])
     -0.99999882345170188, -1.0 };
 
   double twid_im;
-  static const double dv13[2049] = { 0.0, -0.0015339801862847655,
+  static const double dv15[2049] = { 0.0, -0.0015339801862847655,
     -0.0030679567629659761, -0.0046019261204485705, -0.0061358846491544753,
     -0.007669828739531097, -0.00920375478205982, -0.010737659167264491,
     -0.012271538285719925, -0.013805388528060391, -0.0153392062849881,
@@ -2368,8 +2495,8 @@ static void fft(const double x[4096], creal_T y[4096])
 
     istart = 1;
     for (j = ju; j < 2048; j += ju) {
-      twid_re = dv12[j];
-      twid_im = dv13[j];
+      twid_re = dv14[j];
+      twid_im = dv15[j];
       i = istart;
       ihi = istart + iheight;
       while (i < ihi) {
@@ -2447,14 +2574,14 @@ static void filtfilt(const double x_in[7500], double y_out[7500])
   double y[7518];
   double b_y[7518];
   double a[3];
-  static const double b_a[3] = { -0.95097188792623888, 1.9019437758521933,
-    -0.95097188792596821 };
+  static const double b_a[3] = { -0.97517981162796985, 1.9503596232562816,
+    -0.97517981162830258 };
 
-  static const double dv6[4] = { 0.950971887923409, -2.8529156637702271,
-    2.8529156637702271, -0.950971887923409 };
+  static const double dv6[4] = { 0.975179811634754, -2.9255394349042629,
+    2.9255394349042629, -0.975179811634754 };
 
-  static const double dv7[4] = { 1.0, -2.8994795946118641, 2.8039479773829989,
-    -0.904347531392409 };
+  static const double dv7[4] = { 1.0, -2.949735839706348, 2.9007269883554381,
+    -0.950975665016249 };
 
   d0 = 2.0 * x_in[0];
   d1 = 2.0 * x_in[7499];
@@ -2934,7 +3061,7 @@ static void welch_psd(const double signals[7251], const double window[4096],
   int i;
   double S[2048];
   int a;
-  double dv11[4096];
+  double dv13[4096];
   double B;
   double Data_Block[4096];
   static creal_T b_Data_Block[4096];
@@ -3016,8 +3143,8 @@ static void welch_psd(const double signals[7251], const double window[4096],
     }
   }
 
-  b_power(window, dv11);
-  B = sum(dv11) * 250.0 * 2.0;
+  b_power(window, dv13);
+  B = sum(dv13) * 250.0 * 2.0;
 
   //  Average them out
   //  for a = 1:sensors
@@ -3036,20 +3163,20 @@ static void welch_psd(const double signals[7251], const double window[4096],
 //  Input: X (raw data, floats or doubles (preferred);
 //  Outputs: Y .. (TODO);
 //  Fs = 62.5;
-//  1. Remove Mean:
-// Arguments    : double X[7500]
-//                const double X_raw[7500]
+//  0. Get X:
+// Arguments    : const double X_raw[7500]
 //                double *HR_mean
 //                double *Respiratory_rate
 // Return Type  : void
 //
-void get_hr_rr(double X[7500], const double X_raw[7500], double *HR_mean, double
+void get_hr_rr(const double X_raw[7500], double *HR_mean, double
                *Respiratory_rate)
 {
+  static float fv0[7500];
+  int i;
+  static double X[7500];
   double mtmp;
-  int ixstart;
   static double X0[7500];
-  static double X2[7500];
   static double dv0[7500];
   static const double dv1[38] = { 0.0, 0.0071920448261457715,
     0.028561277269457896, 0.063492943419405923, 0.11098212284078024,
@@ -4529,9 +4656,15 @@ void get_hr_rr(double X[7500], const double X_raw[7500], double *HR_mean, double
   static double Locs_data[4096];
   int Locs_size[2];
   int n;
+  ecg_filt_rescale(X_raw, fv0);
+  for (i = 0; i < 7500; i++) {
+    X[i] = fv0[i];
+  }
+
+  //  1. Remove Mean:
   mtmp = mean(X);
-  for (ixstart = 0; ixstart < 7500; ixstart++) {
-    X[ixstart] -= mtmp;
+  for (i = 0; i < 7500; i++) {
+    X[i] -= mtmp;
   }
 
   //  2. Remove baseline drift (Butterworth, high pass: [b, a] = butter(3, 0.5*2/62.5, 'high');  
@@ -4539,12 +4672,12 @@ void get_hr_rr(double X[7500], const double X_raw[7500], double *HR_mean, double
   //  b = [0.601580928135908,-1.804742784407724,1.804742784407724,-0.601580928135908]; 
   //  a = [1,-2.003797477370017,1.447054019489380,-0.361795928227867];
   //  @ 0.5 Hz:
-  filtfilt(X, X0);
+  b_filtfilt(X, X0);
 
   //  2.1 Divide by max value to acheive peak of 1
   //  X0 = X0/ max( abs( X0 ) );
   //  3. Derivative Filter:
-  b_filtfilt(X0, X2);
+  c_filtfilt(X0, X);
 
   //  X2 = X2/max(X2);
   //  4. Square to accentuate ecg waveformsS
@@ -4552,18 +4685,18 @@ void get_hr_rr(double X[7500], const double X_raw[7500], double *HR_mean, double
   //  conv_filter = ones(1, round(0.150*62.5)) / round(0.150*62.5);
   //  Custom: Use Hann Window as filter - better defined peaks.
   //  conv_filter = [0;0.146446609406726;0.500000000000000;0.853553390593274;1;0.853553390593274;0.500000000000000;0.146446609406726;0]; 
-  power(X2, dv0);
+  power(X, dv0);
   conv(dv0, dv1, X4);
 
   // rescale_minmax
   //  Extract fiducial markers (peaks);
-  ixstart = 1;
+  i = 1;
   mtmp = X4[0];
   if (rtIsNaN(X4[0])) {
     ix = 2;
     exitg1 = false;
     while ((!exitg1) && (ix < 7464)) {
-      ixstart = ix;
+      i = ix;
       if (!rtIsNaN(X4[ix - 1])) {
         mtmp = X4[ix - 1];
         exitg1 = true;
@@ -4573,13 +4706,13 @@ void get_hr_rr(double X[7500], const double X_raw[7500], double *HR_mean, double
     }
   }
 
-  if (ixstart < 7463) {
-    while (ixstart + 1 < 7464) {
-      if (X4[ixstart] > mtmp) {
-        mtmp = X4[ixstart];
+  if (i < 7463) {
+    while (i + 1 < 7464) {
+      if (X4[i] > mtmp) {
+        mtmp = X4[i];
       }
 
-      ixstart++;
+      i++;
     }
   }
 
@@ -4592,18 +4725,18 @@ void get_hr_rr(double X[7500], const double X_raw[7500], double *HR_mean, double
 
   //  Output = [Peaks; Locations];
   //  calculate distance between fiducial markers:
-  ixstart = dist->size[0] * dist->size[1];
+  i = dist->size[0] * dist->size[1];
   dist->size[0] = 1;
   dist->size[1] = Peaks->size[0] - 1;
-  emxEnsureCapacity((emxArray__common *)dist, ixstart, sizeof(double));
+  emxEnsureCapacity((emxArray__common *)dist, i, sizeof(double));
   ix = Peaks->size[0] - 1;
   emxFree_real_T(&Peaks);
-  for (ixstart = 0; ixstart < ix; ixstart++) {
-    dist->data[ixstart] = 0.0;
+  for (i = 0; i < ix; i++) {
+    dist->data[i] = 0.0;
   }
 
-  for (ixstart = 0; ixstart <= Locations->size[0] - 2; ixstart++) {
-    dist->data[ixstart] = Locations->data[ixstart + 1] - Locations->data[ixstart];
+  for (i = 0; i <= Locations->size[0] - 2; i++) {
+    dist->data[i] = Locations->data[i + 1] - Locations->data[i];
   }
 
   emxFree_real_T(&Locations);
@@ -4613,22 +4746,22 @@ void get_hr_rr(double X[7500], const double X_raw[7500], double *HR_mean, double
   *HR_mean = 60.0 / (mtmp / Fs);
 
   //  TODO: Get RR:
-  c_filtfilt(X_raw, X0);
+  d_filtfilt(X_raw, X);
 
   //  b_deriv = [7.812500000000000,-8.750000000000000];
-  b_filtfilt(X0, X2);
-  b_conv(X2, dv2, dv3);
+  c_filtfilt(X, X0);
+  b_conv(X0, dv2, dv3);
   welch_psd(dv3, dv4, csm, f);
   rescale_minmax(csm, dv5);
   b_findpeaks(dv5, relevant_frequencies_data, relevant_frequencies_size,
               Locs_data, Locs_size);
   ix = Locs_size[0] * Locs_size[1];
   emxFree_real_T(&dist);
-  for (ixstart = 0; ixstart < ix; ixstart++) {
-    relevant_frequencies_data[ixstart] = f[(int)Locs_data[ixstart] - 1];
+  for (i = 0; i < ix; i++) {
+    relevant_frequencies_data[i] = f[(int)Locs_data[i] - 1];
   }
 
-  ixstart = 1;
+  i = 1;
   n = Locs_size[1];
   mtmp = f[(int)Locs_data[0] - 1];
   if (Locs_size[1] > 1) {
@@ -4636,7 +4769,7 @@ void get_hr_rr(double X[7500], const double X_raw[7500], double *HR_mean, double
       ix = 2;
       exitg1 = false;
       while ((!exitg1) && (ix <= n)) {
-        ixstart = ix;
+        i = ix;
         if (!rtIsNaN(relevant_frequencies_data[ix - 1])) {
           mtmp = relevant_frequencies_data[ix - 1];
           exitg1 = true;
@@ -4646,13 +4779,13 @@ void get_hr_rr(double X[7500], const double X_raw[7500], double *HR_mean, double
       }
     }
 
-    if (ixstart < Locs_size[1]) {
-      while (ixstart + 1 <= n) {
-        if (relevant_frequencies_data[ixstart] < mtmp) {
-          mtmp = relevant_frequencies_data[ixstart];
+    if (i < Locs_size[1]) {
+      while (i + 1 <= n) {
+        if (relevant_frequencies_data[i] < mtmp) {
+          mtmp = relevant_frequencies_data[i];
         }
 
-        ixstart++;
+        i++;
       }
     }
   }

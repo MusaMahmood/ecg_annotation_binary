@@ -5,7 +5,7 @@
 // File: get_hr_rr_types.h
 //
 // MATLAB Coder version            : 3.3
-// C/C++ source code generated on  : 19-Nov-2018 14:27:31
+// C/C++ source code generated on  : 19-Nov-2018 15:06:34
 //
 #ifndef GET_HR_RR_TYPES_H
 #define GET_HR_RR_TYPES_H

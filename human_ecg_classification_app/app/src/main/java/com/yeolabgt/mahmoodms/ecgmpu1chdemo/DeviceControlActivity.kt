@@ -135,15 +135,15 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 addToGraphBuffer(mGraphAdapterClass4!!, outputProbClass4, mCurrentIndex)
             }
             //Stuff for Logging.
-            val yArray = jgetClassDist(outputProbReshaped)
-            val yArray2 = jgetClassDist(outputProbsSmoothed)
-            val s = "Output Class: ${yArray[0]} \n" +
-                    "Array: ${Arrays.toString(yArray.slice(1..5).toFloatArray())}" +
-                    "Smoothed Output Class: ${yArray2[0]} \n" +
-                    "Smoothed Array: ${Arrays.toString(yArray2.slice(1..5).toFloatArray())}"
-            Log.e(TAG, "ClassificationOutput: $s")
+//            val yArray = jgetClassDist(outputProbReshaped)
+//            val yArray2 = jgetClassDist(outputProbsSmoothed)
+//            val s = "Output Class: ${yArray[0]} \n" +
+//                    "Array: ${Arrays.toString(yArray.slice(1..5).toFloatArray())}" +
+//                    "Smoothed Output Class: ${yArray2[0]} \n" +
+//                    "Smoothed Array: ${Arrays.toString(yArray2.slice(1..5).toFloatArray())}"
+//            Log.e(TAG, "ClassificationOutput: $s")
             if (mHRRREnabled) { // TODO: Run HR/RR Analysis
-                val hrrr = jGetHRRR(inputArray.map { it.toDouble() }.toDoubleArray(), ecgRawDoubles)
+                val hrrr = jGetHRRR(ecgRawDoubles) /*inputArray.map { it.toDouble() }.toDoubleArray()*/
                 val hrString = "Heart Rate: %1.2f bpm".format(hrrr[0]) + " Resp Rate: %1.2f breaths/min".format(hrrr[1])
                 runOnUiThread { textViewHR.text = hrString }
             }
@@ -855,7 +855,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     // input/outputs: (2000, 5), as a (10000) array
     private external fun jreturnSmoothedLabels(data: FloatArray): FloatArray
 
-    private external fun jGetHRRR(data_filt: DoubleArray, data_raw: DoubleArray): DoubleArray
+    private external fun jGetHRRR(data_raw: DoubleArray): DoubleArray
 
     companion object {
         const val HZ = "0 Hz"

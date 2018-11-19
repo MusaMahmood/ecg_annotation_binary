@@ -5,7 +5,7 @@
 // File: get_hr_rr.h
 //
 // MATLAB Coder version            : 3.3
-// C/C++ source code generated on  : 19-Nov-2018 14:27:31
+// C/C++ source code generated on  : 19-Nov-2018 15:06:34
 //
 #ifndef GET_HR_RR_H
 #define GET_HR_RR_H
@@ -19,8 +19,8 @@
 #include "get_hr_rr_types.h"
 
 // Function Declarations
-extern void get_hr_rr(double X[7500], const double X_raw[7500], double *HR_mean,
-                      double *Respiratory_rate);
+extern void get_hr_rr(const double X_raw[7500], double *HR_mean, double
+                      *Respiratory_rate);
 extern void get_hr_rr_initialize();
 extern void get_hr_rr_terminate();
 
