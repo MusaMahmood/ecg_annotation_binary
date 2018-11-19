@@ -2,13 +2,13 @@
 // Academic License - for use in teaching, academic research, and meeting
 // course requirements at degree granting institutions only.  Not for
 // government, commercial, or other organizational use.
-// File: get_hr_rr.h
+// File: get_hr_rr_emxutil.h
 //
 // MATLAB Coder version            : 3.3
 // C/C++ source code generated on  : 19-Nov-2018 15:06:34
 //
-#ifndef GET_HR_RR_H
-#define GET_HR_RR_H
+#ifndef GET_HR_RR_EMXUTIL_H
+#define GET_HR_RR_EMXUTIL_H
 
 // Include Files
 #include <stddef.h>
@@ -19,15 +19,16 @@
 #include "get_hr_rr_types.h"
 
 // Function Declarations
-extern void get_hr_rr(const double X_raw[7500], double *HR_mean, double
-                      *Respiratory_rate);
-extern void get_hr_rr_initialize();
-extern void get_hr_rr_terminate();
+extern void emxEnsureCapacity(emxArray__common *emxArray, int oldNumel, unsigned
+  int elementSize);
+extern void emxFree_real_T(emxArray_real_T **pEmxArray);
+extern void emxInit_real_T(emxArray_real_T **pEmxArray, int b_numDimensions);
+extern void emxInit_real_T1(emxArray_real_T **pEmxArray, int b_numDimensions);
 
 #endif
 
 //
-// File trailer for get_hr_rr.h
+// File trailer for get_hr_rr_emxutil.h
 //
 // [EOF]
 //

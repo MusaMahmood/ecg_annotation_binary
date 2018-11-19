@@ -111,12 +111,12 @@ Java_com_yeolabgt_mahmoodms_ecgmpu1chdemo_DeviceControlActivity_jecgBandStopFilt
 extern "C" {
 JNIEXPORT jdoubleArray JNICALL
 Java_com_yeolabgt_mahmoodms_ecgmpu1chdemo_DeviceControlActivity_jGetHRRR(
-        JNIEnv *env, jobject jobject1, jdoubleArray data) {
-    jdouble *X1 = env->GetDoubleArrayElements(data, NULL);
+        JNIEnv *env, jobject jobject1, jdoubleArray data_raw) {
+    jdouble *X_raw = env->GetDoubleArrayElements(data_raw, NULL);
     double Y[2]; // First two values = Y; last 499 = cPSD
-    if (X1 == NULL) LOGE("ERROR - C_ARRAY IS NULL");
+    if (X_raw == NULL) LOGE("ERROR - C_ARRAY IS NULL");
     jdoubleArray m_result = env->NewDoubleArray(2);
-    get_hr_rr(X1, &Y[0], &Y[1]);
+    get_hr_rr(X_raw, &Y[0], &Y[1]);
     env->SetDoubleArrayRegion(m_result, 0, 2, Y);
     return m_result;
 }

@@ -49,30 +49,31 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:orientation="horizontal"
-            android:baselineAligned="false">
+            android:orientation="vertical">
 
             <ListView
                 android:id="@+id/scanningList"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:layout_marginBottom="5dp"
                 android:layout_marginLeft="5dp"
                 android:layout_marginRight="5dp"
-                android:fadeScrollbars="false"
+                android:layout_marginBottom="5dp"
                 android:layout_weight="0.5"
-                android:listSelector="@android:color/transparent" />
+                android:fadeScrollbars="false"
+                android:listSelector="@android:color/transparent" >
+
+            </ListView>
 
             <ListView
                 android:id="@+id/selectedList"
                 android:layout_width="wrap_content"
                 android:layout_height="match_parent"
-                android:layout_marginBottom="5dp"
                 android:layout_marginLeft="5dp"
                 android:layout_marginRight="5dp"
-                android:fadeScrollbars="false"
+                android:layout_marginBottom="5dp"
                 android:layout_weight="0.5"
-                android:listSelector="@android:color/transparent"/>
+                android:fadeScrollbars="false"
+                android:listSelector="@android:color/transparent" />
 
         </LinearLayout>
 

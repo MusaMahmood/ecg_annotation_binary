@@ -59,7 +59,8 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_device_scan)
         //Set Orientation in Landscape
-        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+//        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         //Set up action bar:
         if (actionBar != null) actionBar!!.setDisplayHomeAsUpEnabled(false)
         val actionBar = actionBar
