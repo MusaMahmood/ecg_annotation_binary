@@ -93,10 +93,11 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         if (mTFRunModel) {
             val outputProbabilities = FloatArray(2000 * outputClasses)
             val ecgRawDoubles = mCh1!!.classificationBuffer
+            //Select last 2000 values for saving.
+            val ecgRawDoublesCrop = DoubleArray(2000)
+            System.arraycopy(ecgRawDoubles, 5499, ecgRawDoublesCrop, 0, 2000)
             // Filter, level and return as floats:
-            val inputArray = jecgFiltRescale(ecgRawDoubles)  //Float Array
-            // TODO: START TEMP LINES
-            // TODO: END TEMP LINES
+            val inputArray = jecgFiltRescale(ecgRawDoublesCrop)  //Float Array
             mTensorFlowInferenceInterface!!.feed(INPUT_DATA_FEED_KEY, inputArray, 1L, mTensorflowInputXDim, mTensorflowInputYDim)
             mTensorFlowInferenceInterface!!.run(mOutputScoresNames)
             mTensorFlowInferenceInterface!!.fetch(OUTPUT_DATA_FEED_KEY, outputProbabilities)
@@ -124,8 +125,8 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             System.arraycopy(outputProbsSmoothed, 6000, outputProbClass3, 0, 2000)
             System.arraycopy(outputProbsSmoothed, 8000, outputProbClass4, 0, 2000)
             // TODO: Run HR/RR Analysis and
-            val hrrr = jGetHRRR(inputArray.map { it.toDouble() }.toDoubleArray())
-            val hrString = "Heart Rate: %1.2f bpm".format(hrrr[0])
+            val hrrr = jGetHRRR(inputArray.map { it.toDouble() }.toDoubleArray(), ecgRawDoubles)
+            val hrString = "Heart Rate: %1.2f bpm".format(hrrr[0]) + " Resp Rate: %1.2f breaths/min".format(hrrr[1])
             runOnUiThread {
                 addToGraphBuffer(mGraphAdapterCh1!!, inputArray, mCurrentIndex)
                 addToGraphBuffer(mGraphAdapterClass0!!, outputProbClass0, mCurrentIndex)
@@ -601,8 +602,8 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
     override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
         if (mCh1 == null || mCh2 == null) {
-            mCh1 = DataChannel(false, mMSBFirst, 8 * mSampleRate)
-            mCh2 = DataChannel(false, mMSBFirst, 8 * mSampleRate)
+            mCh1 = DataChannel(false, mMSBFirst, 30 * mSampleRate)
+            mCh2 = DataChannel(false, mMSBFirst, 30 * mSampleRate)
         }
 
         if (AppConstant.CHAR_BATTERY_LEVEL == characteristic.uuid) {
@@ -848,7 +849,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     // input/outputs: (2000, 5), as a (10000) array
     private external fun jreturnSmoothedLabels(data: FloatArray): FloatArray
 
-    private external fun jGetHRRR(data: DoubleArray): DoubleArray
+    private external fun jGetHRRR(data_filt: DoubleArray, data_raw: DoubleArray): DoubleArray
 
     companion object {
         const val HZ = "0 Hz"
