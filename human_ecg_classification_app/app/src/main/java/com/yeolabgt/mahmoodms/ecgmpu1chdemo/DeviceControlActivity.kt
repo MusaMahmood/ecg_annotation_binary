@@ -84,6 +84,8 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     private var mTensorflowOutputXDim = 1L
     private var mTensorflowOutputYDim = 1L
     private var mNumberOfClassifierCalls = 0
+    // HR/RR:
+    private var mHRRREnabled = false
 
 
     private val mTimeStamp: String
@@ -124,9 +126,6 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             System.arraycopy(outputProbsSmoothed, 4000, outputProbClass2, 0, 2000)
             System.arraycopy(outputProbsSmoothed, 6000, outputProbClass3, 0, 2000)
             System.arraycopy(outputProbsSmoothed, 8000, outputProbClass4, 0, 2000)
-            // TODO: Run HR/RR Analysis and
-            val hrrr = jGetHRRR(inputArray.map { it.toDouble() }.toDoubleArray(), ecgRawDoubles)
-            val hrString = "Heart Rate: %1.2f bpm".format(hrrr[0]) + " Resp Rate: %1.2f breaths/min".format(hrrr[1])
             runOnUiThread {
                 addToGraphBuffer(mGraphAdapterCh1!!, inputArray, mCurrentIndex)
                 addToGraphBuffer(mGraphAdapterClass0!!, outputProbClass0, mCurrentIndex)
@@ -134,9 +133,8 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 addToGraphBuffer(mGraphAdapterClass2!!, outputProbClass2, mCurrentIndex)
                 addToGraphBuffer(mGraphAdapterClass3!!, outputProbClass3, mCurrentIndex)
                 addToGraphBuffer(mGraphAdapterClass4!!, outputProbClass4, mCurrentIndex)
-                textViewHR.text = hrString
             }
-
+            //Stuff for Logging.
             val yArray = jgetClassDist(outputProbReshaped)
             val yArray2 = jgetClassDist(outputProbsSmoothed)
             val s = "Output Class: ${yArray[0]} \n" +
@@ -144,6 +142,11 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                     "Smoothed Output Class: ${yArray2[0]} \n" +
                     "Smoothed Array: ${Arrays.toString(yArray2.slice(1..5).toFloatArray())}"
             Log.e(TAG, "ClassificationOutput: $s")
+            if (mHRRREnabled) { // TODO: Run HR/RR Analysis
+                val hrrr = jGetHRRR(inputArray.map { it.toDouble() }.toDoubleArray(), ecgRawDoubles)
+                val hrString = "Heart Rate: %1.2f bpm".format(hrrr[0]) + " Resp Rate: %1.2f breaths/min".format(hrrr[1])
+                runOnUiThread { textViewHR.text = hrString }
+            }
         }
     }
 
@@ -619,6 +622,9 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             mPrimarySaveDataFile!!.writeToDisk(mCh1!!.characteristicDataPacketBytes)
             // For every 2000 dp recieved, run classification model.
             //TODO: CHANGE THIS SO IT HAPPENS AS OFTEN AS POSSIBLE.
+            if (mCh1!!.totalDataPointsReceived > 7500) {
+                mHRRREnabled = true
+            }
             if (mCh1!!.dataPointCounterClassify > 500 && mCh1!!.totalDataPointsReceived > 2000) {
                 Log.e(TAG, "mClassifyThread Start Time")
                 mCurrentIndex = mCh1!!.totalDataPointsReceived - 2000
