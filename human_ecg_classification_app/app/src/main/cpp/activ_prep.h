@@ -5,7 +5,7 @@
 // File: activ_prep.h
 //
 // MATLAB Coder version            : 3.3
-// C/C++ source code generated on  : 30-Nov-2018 02:18:34
+// C/C++ source code generated on  : 30-Nov-2018 14:37:28
 //
 #ifndef ACTIV_PREP_H
 #define ACTIV_PREP_H
@@ -18,7 +18,7 @@
 #include "activ_prep_types.h"
 
 // Function Declarations
-extern void activ_prep(const double data_in[1536], float Y[2048]);
+extern void activ_prep(const double data_in[1536], float Y_temp[2048]);
 extern void activ_prep_initialize();
 extern void activ_prep_terminate();
 

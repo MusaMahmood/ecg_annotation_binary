@@ -22,6 +22,7 @@ import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import com.androidplot.util.Redrawer
+import com.google.common.primitives.Doubles
 import com.yeolabgt.mahmoodms.actblelibrary.ActBle
 import kotlinx.android.synthetic.main.activity_device_control_classify.*
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface
@@ -83,10 +84,16 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     private var mTensorflowInputYDim = 1L
     private var mTensorflowOutputXDim = 1L
     private var mTensorflowOutputYDim = 1L
-    // TODO: TF Implementation for Activity data:
+    // TF Implementation for Activity data:
     private var mTensorFlowInferenceInterfaceActivity: TensorFlowInferenceInterface? = null
     private var mOutputScoresNamesActivity: Array<String>? = null
     private var mTFRunModelActivity = true
+    private val mAccXBuffer = DoubleArray(256)
+    private val mAccYBuffer = DoubleArray(256)
+    private val mAccZBuffer = DoubleArray(256)
+    private val mGyrXBuffer = DoubleArray(256)
+    private val mGyrYBuffer = DoubleArray(256)
+    private val mGyrZBuffer = DoubleArray(256)
     // HR/RR:
     private var mHRRREnabled = false
 
@@ -97,13 +104,22 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     private val mClassifyActivityThread = Runnable {
         if (mTFRunModelActivity) {
             val outputProbabilities = FloatArray(6)
-            val r = Random()
-            val inputFeatures = FloatArray(256 * 8)
-            // TODO: Sys array copy into inputFeatures
-            mTensorFlowInferenceInterfaceActivity?.feed(INPUT_DATA_ACTIV_KEY, inputFeatures, 1L/*batch*/, 256/*x_dim*/, 8/*y_dim*/)
+            val doubleArrayAccGyr = Doubles.concat(mAccXBuffer, mAccYBuffer, mAccZBuffer, mGyrXBuffer, mGyrYBuffer, mGyrZBuffer)
+            val inputFeatures = jactivPrep(doubleArrayAccGyr)
+            Log.e(TAG, "inputFeatures: ${Arrays.toString(inputFeatures)}")
+            mTensorFlowInferenceInterfaceActivity?.feed(INPUT_DATA_ACTIV_KEY, inputFeatures, 1L/*batch*/, 256L/*x_dim*/, 8L/*y_dim*/)
             mTensorFlowInferenceInterfaceActivity?.run(mOutputScoresNamesActivity)
             mTensorFlowInferenceInterfaceActivity?.fetch(OUTPUT_DATA_ACTIV_KEY, outputProbabilities)
             Log.e(TAG, "Activity: OutputProbs: ${Arrays.toString(outputProbabilities)}")
+            //Save Data:
+            val outputArray0 = DoubleArray(256) {outputProbabilities[0].toDouble()}
+            val outputArray1 = DoubleArray(256) {outputProbabilities[1].toDouble()}
+            val outputArray2 = DoubleArray(256) {outputProbabilities[2].toDouble()}
+            val outputArray3 = DoubleArray(256) {outputProbabilities[3].toDouble()}
+            val outputArray4 = DoubleArray(256) {outputProbabilities[4].toDouble()}
+            val outputArray5 = DoubleArray(256) {outputProbabilities[5].toDouble()}
+            mSaveFileMPUOutputs?.writeToDiskDouble(mAccXBuffer, mAccYBuffer, mAccZBuffer, mGyrXBuffer, mGyrYBuffer, mGyrZBuffer,
+                    outputArray0, outputArray1, outputArray2,outputArray3, outputArray4, outputArray5)
         }
     }
 
@@ -151,13 +167,13 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 addToGraphBuffer(mGraphAdapterClass4!!, outputProbClass4, mCurrentIndex)
             }
             //Stuff for Logging.
-//            val yArray = jgetClassDist(outputProbReshaped)
-//            val yArray2 = jgetClassDist(outputProbsSmoothed)
-//            val s = "Output Class: ${yArray[0]} \n" +
-//                    "Array: ${Arrays.toString(yArray.slice(1..5).toFloatArray())}" +
-//                    "Smoothed Output Class: ${yArray2[0]} \n" +
-//                    "Smoothed Array: ${Arrays.toString(yArray2.slice(1..5).toFloatArray())}"
-//            Log.e(TAG, "ClassificationOutput: $s")
+            val yArray = jgetClassDist(outputProbReshaped)
+            val yArray2 = jgetClassDist(outputProbsSmoothed)
+            val s = "Output Class: ${yArray[0]} \n" +
+                    "Array: ${Arrays.toString(yArray.slice(1..5).toFloatArray())}" +
+                    "Smoothed Output Class: ${yArray2[0]} \n" +
+                    "Smoothed Array: ${Arrays.toString(yArray2.slice(1..5).toFloatArray())}"
+            Log.e(TAG, "ClassificationOutput: $s")
             if (mHRRREnabled) { // TODO: Run HR/RR Analysis
                 val hrrr = jGetHRRR(ecgRawDoubles) /*inputArray.map { it.toDouble() }.toDoubleArray()*/
                 val hrString = "Heart Rate: %1.2f bpm".format(hrrr[0]) + " Resp Rate: %1.2f breaths/min".format(hrrr[1])
@@ -280,6 +296,10 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         }
         val uii3 = FileProvider.getUriForFile(context, context.packageName + ".provider", mTensorflowOutputsSaveFile!!.file)
         files.add(uii3)
+        if (mSaveFileMPUOutputs != null) {
+            val uii4 = FileProvider.getUriForFile(context, context.packageName + ".provider", mSaveFileMPUOutputs!!.file)
+            files.add(uii4)
+        }
         val exportData = Intent(Intent.ACTION_SEND_MULTIPLE)
         exportData.putExtra(Intent.EXTRA_SUBJECT, "ECG Sensor Data Export Details")
         exportData.putParcelableArrayListExtra(Intent.EXTRA_STREAM, files)
@@ -290,8 +310,9 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     @Throws(IOException::class)
     private fun terminateDataFileWriter() {
         mPrimarySaveDataFile?.terminateDataFileWriter()
-        mSaveFileMPU?.terminateDataFileWriter()
         mTensorflowOutputsSaveFile?.terminateDataFileWriter()
+        mSaveFileMPU?.terminateDataFileWriter()
+        mSaveFileMPUOutputs?.terminateDataFileWriter()
     }
 
     public override fun onResume() {
@@ -391,6 +412,10 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         } else if (!mSaveFileMPU!!.initialized) {
             Log.e(TAG, "New Filename: $fileNameTimeStamped")
             mSaveFileMPU?.createNewFile(directory, fileNameTimeStamped)
+        }
+        val fileNameTimeStamped2 = "MPUOutputs_$mTimeStamp"
+        if (mSaveFileMPUOutputs == null) {
+            mSaveFileMPUOutputs = SaveDataFile(directory, fileNameTimeStamped2, 16, 0.032, false, false)
         }
     }
 
@@ -663,12 +688,6 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 mCh1?.resetCounterClassify()
                 val classifyTaskThread = Thread(mClassifyThread)
                 classifyTaskThread.start()
-
-                // TODO: THIS IS TEMPORARY, REMOVE IMMEDIATELY: //
-                Log.e(TAG, "mClassifyActivityThread Start Time")
-                val classifyActivityThread = Thread(mClassifyActivityThread)
-                classifyActivityThread.start()
-                // END TODO //
             }
         }
 
@@ -682,7 +701,8 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             mMPU!!.handleNewData(dataMPU)
             // TODO add data to it's own buffer (outside of mMPU) → (256, 6), as 6 sep arrays: use the following function to return relevant data(separated);
             addToGraphBufferMPU(mMPU!!)
-            if (mMPU!!.dataPointCounterClassify > 31 && mMPU!!.totalDataPointsReceived > 256) {
+            Log.e(TAG, "mMPU!!.totalDataPointsReceived: ${mMPU!!.totalDataPointsReceived}")
+            if (mMPU!!.dataPointCounterClassify > 128 && mMPU!!.totalDataPointsReceived > 256) {
                 Log.e(TAG, "mClassifyActivityThread Start Time")
                 mMPU?.resetCounterClassify()
                 val classifyActivityThread = Thread(mClassifyActivityThread)
@@ -706,11 +726,31 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
     private fun addToGraphBufferMPU(dataChannel: DataChannel) {
         if (dataChannel.dataBuffer != null) {
-            for (i in 0 until dataChannel.dataBuffer!!.size / 12) {
-                mGraphAdapterMotionAX?.addDataPointTimeDomain(DataChannel.bytesToDoubleMPUAccel(dataChannel.dataBuffer!![12 * i], dataChannel.dataBuffer!![12 * i + 1]), mTimestampIdxMPU)
-                mGraphAdapterMotionAY?.addDataPointTimeDomain(DataChannel.bytesToDoubleMPUAccel(dataChannel.dataBuffer!![12 * i + 2], dataChannel.dataBuffer!![12 * i + 3]), mTimestampIdxMPU)
-                mGraphAdapterMotionAZ?.addDataPointTimeDomain(DataChannel.bytesToDoubleMPUAccel(dataChannel.dataBuffer!![12 * i + 4], dataChannel.dataBuffer!![12 * i + 5]), mTimestampIdxMPU)
+            val numberDataPoints = dataChannel.dataBuffer!!.size / 12
+            for (i in 0 until numberDataPoints) {
+                val accX = DataChannel.bytesToDoubleMPUAccel(dataChannel.dataBuffer!![12 * i], dataChannel.dataBuffer!![12 * i + 1])
+                val accY = DataChannel.bytesToDoubleMPUAccel(dataChannel.dataBuffer!![12 * i + 2], dataChannel.dataBuffer!![12 * i + 3])
+                val accZ = DataChannel.bytesToDoubleMPUAccel(dataChannel.dataBuffer!![12 * i + 4], dataChannel.dataBuffer!![12 * i + 5])
+                val gyrX = DataChannel.bytesToDoubleMPUGyro(dataChannel.dataBuffer!![12 * i + 6], dataChannel.dataBuffer!![12 * i + 7])
+                val gyrY = DataChannel.bytesToDoubleMPUGyro(dataChannel.dataBuffer!![12 * i + 8], dataChannel.dataBuffer!![12 * i + 9])
+                val gyrZ = DataChannel.bytesToDoubleMPUGyro(dataChannel.dataBuffer!![12 * i + 10], dataChannel.dataBuffer!![12 * i + 11])
+                mGraphAdapterMotionAX?.addDataPointTimeDomain(accX, mTimestampIdxMPU)
+                mGraphAdapterMotionAY?.addDataPointTimeDomain(accY, mTimestampIdxMPU)
+                mGraphAdapterMotionAZ?.addDataPointTimeDomain(accZ, mTimestampIdxMPU)
                 mTimestampIdxMPU += 1
+                // Put in arrays: starting at back - numberDataPoints
+                System.arraycopy(mAccXBuffer, 1, mAccXBuffer, 0, mAccXBuffer.size - 1) //shift backwards
+                mAccXBuffer[255] = accX // Add to end
+                System.arraycopy(mAccYBuffer, 1, mAccYBuffer, 0, mAccYBuffer.size - 1)
+                mAccYBuffer[255] = accY
+                System.arraycopy(mAccZBuffer, 1, mAccZBuffer, 0, mAccZBuffer.size - 1)
+                mAccZBuffer[255] = accZ
+                System.arraycopy(mGyrXBuffer, 1, mGyrXBuffer, 0, mGyrXBuffer.size - 1)
+                mGyrXBuffer[255] = gyrX
+                System.arraycopy(mGyrYBuffer, 1, mGyrYBuffer, 0, mGyrYBuffer.size - 1)
+                mGyrYBuffer[255] = gyrY
+                System.arraycopy(mGyrZBuffer, 1, mGyrZBuffer, 0, mGyrZBuffer.size - 1)
+                mGyrZBuffer[255] = gyrZ
             }
         }
         dataChannel.resetBuffer()
@@ -928,6 +968,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         private var mPrimarySaveDataFile: SaveDataFile? = null
         private var mTensorflowOutputsSaveFile: SaveDataFile? = null
         private var mSaveFileMPU: SaveDataFile? = null
+        private var mSaveFileMPUOutputs: SaveDataFile? = null
 
         init {
             System.loadLibrary("ecg-lib")

@@ -3161,7 +3161,7 @@ static void welch_psd(const double signals[7251], const double window[4096],
 // get_hr_rr This function uses a variant of the Pan-Tompkins Algorithm to
 // detect ECG QRS features from low frequency data:
 //  Input: X (raw data, floats or doubles (preferred);
-//  Outputs: Y .. (TODO);
+//  Outputs: Y ..
 // Arguments    : const double X_raw[7500]
 //                double *HR_mean
 //                double *Respiratory_rate
@@ -4743,7 +4743,7 @@ void get_hr_rr(const double X_raw[7500], double *HR_mean, double
   //  average in seconds:
   *HR_mean = 60.0 / (mtmp / Fs);
 
-  //  TODO: Get RR:
+  //  TODO: Redo RR Algorithm
   d_filtfilt(X_raw, X);
 
   //  b_deriv = [7.812500000000000,-8.750000000000000];

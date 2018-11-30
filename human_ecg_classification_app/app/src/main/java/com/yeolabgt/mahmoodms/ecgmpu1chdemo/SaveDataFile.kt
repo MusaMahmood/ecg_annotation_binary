@@ -8,6 +8,7 @@ import com.opencsv.CSVWriter
 import java.io.File
 import java.io.FileWriter
 import java.io.IOException
+import java.util.*
 
 /**
  * Created by mmahmood31 on 10/19/2017.
@@ -100,6 +101,20 @@ constructor(directory: String, fileName: String, byteResolution: Int, increment:
         val floats = Array(len) {FloatArray(floatArrays[0]!!.size)}
         for (f in 0 until len) {
             floats[f] = floatArrays[f]!!
+        }
+
+        try {
+            exportFile(*floats)
+        } catch (e: IOException) {
+            Log.e("IOException", e.toString())
+        }
+    }
+
+    fun writeToDiskDouble(vararg doubleArrays: DoubleArray?) {
+        val len = doubleArrays.size
+        val floats = Array(len) {DoubleArray(doubleArrays[0]!!.size)}
+        for (f in 0 until len) {
+            floats[f] = doubleArrays[f]!!
         }
 
         try {
