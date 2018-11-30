@@ -35,6 +35,7 @@ add_library( # Sets the name of the library.
                 src/main/cpp/smooth_probs.cpp
                 src/main/cpp/get_hr_rr.cpp
                 src/main/cpp/get_hr_rr_emxutil.cpp
+                src/main/cpp/activ_prep.cpp
 
                 # Executor
                 src/main/cpp/jniExecutor.cpp

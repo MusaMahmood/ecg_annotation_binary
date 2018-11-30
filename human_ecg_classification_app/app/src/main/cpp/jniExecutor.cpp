@@ -10,6 +10,7 @@
 #include "rearrange_5c.h"
 #include "smooth_probs.h"
 #include "get_hr_rr.h"
+#include "activ_prep.h"
 
 /*Additional Includes*/
 #include <jni.h>
@@ -17,6 +18,20 @@
 
 #define  LOG_TAG "jniExecutor-cpp"
 #define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+
+extern "C" {
+JNIEXPORT jfloatArray JNICALL
+Java_com_yeolabgt_mahmoodms_ecgmpu1chdemo_DeviceControlActivity_jactivPrep(
+        JNIEnv *env, jobject jobject1, jdoubleArray data) {
+    jdouble *X = env->GetDoubleArrayElements(data, NULL);
+    float Y[2048]; // 256 * 8
+    if (X == NULL) LOGE("ERROR - C_ARRAY IS NULL");
+    jfloatArray m_result = env->NewFloatArray(2048);
+    activ_prep(X, Y);
+    env->SetFloatArrayRegion(m_result, 0, 2048, Y);
+    return m_result;
+}
+}
 
 extern "C" {
 JNIEXPORT jfloatArray JNICALL

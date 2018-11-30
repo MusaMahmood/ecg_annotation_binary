@@ -77,13 +77,16 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     private var dataRate: Double = 0.toDouble()
     // Tensorflow Implementation:
     private var mTFRunModel = true
-    private var mTensorFlowInferenceInterface: TensorFlowInferenceInterface? = null
-    private var mOutputScoresNames: Array<String>? = null
+    private var mTensorFlowInferenceInterfaceEcg: TensorFlowInferenceInterface? = null
+    private var mOutputScoresNamesEcg: Array<String>? = null
     private var mTensorflowInputXDim = 1L
     private var mTensorflowInputYDim = 1L
     private var mTensorflowOutputXDim = 1L
     private var mTensorflowOutputYDim = 1L
-    private var mNumberOfClassifierCalls = 0
+    // TODO: TF Implementation for Activity data:
+    private var mTensorFlowInferenceInterfaceActivity: TensorFlowInferenceInterface? = null
+    private var mOutputScoresNamesActivity: Array<String>? = null
+    private var mTFRunModelActivity = true
     // HR/RR:
     private var mHRRREnabled = false
 
@@ -91,18 +94,31 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     private val mTimeStamp: String
         get() = SimpleDateFormat("yyyy.MM.dd_HH.mm.ss", Locale.US).format(Date())
 
+    private val mClassifyActivityThread = Runnable {
+        if (mTFRunModelActivity) {
+            val outputProbabilities = FloatArray(6)
+            val r = Random()
+            val inputFeatures = FloatArray(256 * 8)
+            // TODO: Sys array copy into inputFeatures
+            mTensorFlowInferenceInterfaceActivity?.feed(INPUT_DATA_ACTIV_KEY, inputFeatures, 1L/*batch*/, 256/*x_dim*/, 8/*y_dim*/)
+            mTensorFlowInferenceInterfaceActivity?.run(mOutputScoresNamesActivity)
+            mTensorFlowInferenceInterfaceActivity?.fetch(OUTPUT_DATA_ACTIV_KEY, outputProbabilities)
+            Log.e(TAG, "Activity: OutputProbs: ${Arrays.toString(outputProbabilities)}")
+        }
+    }
+
     private val mClassifyThread = Runnable {
         if (mTFRunModel) {
             val outputProbabilities = FloatArray(2000 * outputClasses)
             val ecgRawDoubles = mCh1!!.classificationBuffer
             //Select last 2000 values for saving.
             val ecgRawDoublesCrop = DoubleArray(2000)
-            System.arraycopy(ecgRawDoubles, 5499, ecgRawDoublesCrop, 0, 2000)
+            System.arraycopy(ecgRawDoubles, 5499/*len-2000-1*/, ecgRawDoublesCrop, 0, 2000)
             // Filter, level and return as floats:
             val inputArray = jecgFiltRescale(ecgRawDoublesCrop)  //Float Array
-            mTensorFlowInferenceInterface!!.feed(INPUT_DATA_FEED_KEY, inputArray, 1L, mTensorflowInputXDim, mTensorflowInputYDim)
-            mTensorFlowInferenceInterface!!.run(mOutputScoresNames)
-            mTensorFlowInferenceInterface!!.fetch(OUTPUT_DATA_FEED_KEY, outputProbabilities)
+            mTensorFlowInferenceInterfaceEcg?.feed(INPUT_DATA_FEED_KEY, inputArray, 1L, mTensorflowInputXDim, mTensorflowInputYDim)
+            mTensorFlowInferenceInterfaceEcg?.run(mOutputScoresNamesEcg)
+            mTensorFlowInferenceInterfaceEcg?.fetch(OUTPUT_DATA_FEED_KEY, outputProbabilities)
             // Save outputProbabilities
             Log.e(TAG, "OutputArray.size: ${outputProbabilities.size}")
             val outputProbReshaped = jrearrange5c(outputProbabilities)
@@ -151,29 +167,47 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     }
 
     private fun enableTensorflowModel() {
-        val classificationModelBinary = "opt_iptb_step_scnnd_u32_lr0.001.pb"
+        val classificationModelBinary = "opt_iptb_inception.v2.8_0.001.pb"
         val classificationModelPath = Environment.getExternalStorageDirectory().absolutePath +
                 "/Download/tensorflow_assets/ecg_classify/" + classificationModelBinary
-        Log.e(TAG, "Tensorflow classification Model Path: $classificationModelPath")
+        Log.e(TAG, "Tensorflow ECG classification Model Path: $classificationModelPath")
         mTensorflowInputXDim = 2000
         mTensorflowInputYDim = 1
         mTensorflowOutputXDim = 2000
         mTensorflowOutputYDim = 1
         when {
             File(classificationModelPath).exists() -> {
-                mTensorFlowInferenceInterface = TensorFlowInferenceInterface(assets, classificationModelPath)
+                mTensorFlowInferenceInterfaceEcg = TensorFlowInferenceInterface(assets, classificationModelPath)
                 // Reset counter:
-                mNumberOfClassifierCalls = 1
                 mTFRunModel = true
                 Log.i(TAG, "Tensorflow - Custom classification Model Loaded: $classificationModelBinary")
             }
             else -> {
                 mTFRunModel = false
-                Toast.makeText(applicationContext, "No TF Model Found!", Toast.LENGTH_LONG).show()
+                Toast.makeText(applicationContext, "ECG TF Model Missing!", Toast.LENGTH_LONG).show()
             }
         }
-        if (mTFRunModel) {
-            Toast.makeText(applicationContext, "Tensorflow classification Model Loaded!", Toast.LENGTH_SHORT).show()
+        // Enable Activity Model:
+        val classificationModelBinaryActivity = "opt_activity256_classify_v0.pb"
+        val classificationModelPathActivity = Environment.getExternalStorageDirectory().absolutePath +
+                "/Download/tensorflow_assets/activity_classify/" + classificationModelBinaryActivity
+        Log.e(TAG, "Tensorflow Activity classification Model Path: $classificationModelPathActivity")
+        when {
+            File(classificationModelPathActivity).exists() -> {
+                mTensorFlowInferenceInterfaceActivity = TensorFlowInferenceInterface(assets, classificationModelPathActivity)
+                Log.i(TAG, "Tensorflow - Custom classification Model Loaded: $classificationModelBinaryActivity")
+                mTFRunModelActivity = true
+            }
+            else -> {
+                Toast.makeText(applicationContext, "Activity TF Model Missing!", Toast.LENGTH_LONG).show()
+                mTFRunModelActivity = true
+            }
+        }
+
+        if (mTFRunModel and mTFRunModelActivity) {
+            Toast.makeText(applicationContext, "Tensorflow classification Models Loaded!", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(applicationContext, "One or more classification models missing!", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -214,11 +248,12 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 enableTensorflowModel()
             } else {
                 mTFRunModel = false
-                mNumberOfClassifierCalls = 1
+                mTFRunModelActivity = false
                 Toast.makeText(applicationContext, "Tensorflow Disabled", Toast.LENGTH_SHORT).show()
             }
         }
-        mOutputScoresNames = arrayOf(OUTPUT_DATA_FEED_KEY)
+        mOutputScoresNamesEcg = arrayOf(OUTPUT_DATA_FEED_KEY)
+        mOutputScoresNamesActivity = arrayOf(OUTPUT_DATA_ACTIV_KEY)
         if (mTFRunModel) {
             enableTensorflowModel()
         }
@@ -577,9 +612,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
                 if (AppConstant.SERVICE_MPU == service.uuid) {
                     mActBle!!.setCharacteristicNotifications(gatt, service.getCharacteristic(AppConstant.CHAR_MPU_COMBINED), true)
-                    //TODO: INITIALIZE MPU FILE HERE:
                     mMPU = DataChannel(false, true, 0)
-//                    mSaveFileMPU = null
                     createNewFileMPU()
                 }
             }
@@ -621,7 +654,6 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             mCh1!!.handleNewData(mNewEEGdataBytes)
             mPrimarySaveDataFile!!.writeToDisk(mCh1!!.characteristicDataPacketBytes)
             // For every 2000 dp recieved, run classification model.
-            //TODO: CHANGE THIS SO IT HAPPENS AS OFTEN AS POSSIBLE.
             if (mCh1!!.totalDataPointsReceived > 7500) {
                 mHRRREnabled = true
             }
@@ -631,7 +663,12 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 mCh1?.resetCounterClassify()
                 val classifyTaskThread = Thread(mClassifyThread)
                 classifyTaskThread.start()
-                Log.e(TAG, "mClassifyThread End Time")
+
+                // TODO: THIS IS TEMPORARY, REMOVE IMMEDIATELY: //
+                Log.e(TAG, "mClassifyActivityThread Start Time")
+                val classifyActivityThread = Thread(mClassifyActivityThread)
+                classifyActivityThread.start()
+                // END TODO //
             }
         }
 
@@ -643,7 +680,14 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             val dataMPU = characteristic.value
             getDataRateBytes2(dataMPU.size) //+=240
             mMPU!!.handleNewData(dataMPU)
+            // TODO add data to it's own buffer (outside of mMPU) → (256, 6), as 6 sep arrays: use the following function to return relevant data(separated);
             addToGraphBufferMPU(mMPU!!)
+            if (mMPU!!.dataPointCounterClassify > 31 && mMPU!!.totalDataPointsReceived > 256) {
+                Log.e(TAG, "mClassifyActivityThread Start Time")
+                mMPU?.resetCounterClassify()
+                val classifyActivityThread = Thread(mClassifyActivityThread)
+                classifyActivityThread.start()
+            }
             mSaveFileMPU!!.exportDataWithTimestampMPU(mMPU!!.characteristicDataPacketBytes)
             if (mSaveFileMPU!!.mLinesWrittenCurrentFile > 1048576) {
                 mSaveFileMPU!!.terminateDataFileWriter()
@@ -848,6 +892,8 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
     private external fun jecgFiltRescale(data: DoubleArray): FloatArray
 
+    private external fun jactivPrep(data: DoubleArray): FloatArray
+
     private external fun jrearrange5c(data: FloatArray): FloatArray
 
     private external fun jgetClassDist(data: FloatArray): FloatArray
@@ -860,7 +906,9 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     companion object {
         const val HZ = "0 Hz"
         private const val INPUT_DATA_FEED_KEY = "input_1"
-        private const val OUTPUT_DATA_FEED_KEY = "dense_1/truediv"
+        private const val OUTPUT_DATA_FEED_KEY = "conv1d_30/truediv"  // dense_1/truediv
+        private const val INPUT_DATA_ACTIV_KEY = "conv1d_1_input"
+        private const val OUTPUT_DATA_ACTIV_KEY = "dense_2/Softmax"
         private val TAG = DeviceControlActivity::class.java.simpleName
         var mRedrawer: Redrawer? = null
         // Power Spectrum Graph Data:

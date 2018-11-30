@@ -3162,8 +3162,6 @@ static void welch_psd(const double signals[7251], const double window[4096],
 // detect ECG QRS features from low frequency data:
 //  Input: X (raw data, floats or doubles (preferred);
 //  Outputs: Y .. (TODO);
-//  Fs = 62.5;
-//  0. Get X:
 // Arguments    : const double X_raw[7500]
 //                double *HR_mean
 //                double *Respiratory_rate
