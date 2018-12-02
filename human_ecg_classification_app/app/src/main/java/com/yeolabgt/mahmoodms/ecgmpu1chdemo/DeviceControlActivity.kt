@@ -101,6 +101,15 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     private val mTimeStamp: String
         get() = SimpleDateFormat("yyyy.MM.dd_HH.mm.ss", Locale.US).format(Date())
 
+    private fun getArgMax(floatArray: FloatArray): Int {
+        var largest = 0
+        for (i in 1 until floatArray.size) {
+            if (floatArray[i] > floatArray[largest])
+                largest = i
+        }
+        return largest
+    }
+
     private val mClassifyActivityThread = Runnable {
         if (mTFRunModelActivity) {
             val outputProbabilities = FloatArray(6)
@@ -120,11 +129,24 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             val outputArray5 = DoubleArray(256) {outputProbabilities[5].toDouble()}
             mSaveFileMPUOutputs?.writeToDiskDouble(mAccXBuffer, mAccYBuffer, mAccZBuffer, mGyrXBuffer, mGyrYBuffer, mGyrZBuffer,
                     outputArray0, outputArray1, outputArray2,outputArray3, outputArray4, outputArray5)
+            val outputClass = getArgMax(outputProbabilities)
+            val s = when (outputClass) {
+                0 -> "Idle"
+                1 -> "Walking"
+                2 -> "Running"
+                3 -> "Stairs, Down"
+                4 -> "Stairs, Up"
+                5 -> "Fall Detected!"
+                else -> ""
+            }
+            val outputString = "Current Activity: $s"
+            runOnUiThread {textViewActivity.text = outputString}
         }
     }
 
     private val mClassifyThread = Runnable {
         if (mTFRunModel) {
+            val currentTimeStamp = mCh1!!.totalDataPointsReceived.toDouble() / mSampleRate.toDouble()
             val outputProbabilities = FloatArray(2000 * outputClasses)
             val ecgRawDoubles = mCh1!!.classificationBuffer
             //Select last 2000 values for saving.
@@ -174,10 +196,12 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                     "Smoothed Output Class: ${yArray2[0]} \n" +
                     "Smoothed Array: ${Arrays.toString(yArray2.slice(1..5).toFloatArray())}"
             Log.e(TAG, "ClassificationOutput: $s")
-            if (mHRRREnabled) { // TODO: Run HR/RR Analysis
+            if (mHRRREnabled) {
                 val hrrr = jGetHRRR(ecgRawDoubles) /*inputArray.map { it.toDouble() }.toDoubleArray()*/
                 val hrString = "Heart Rate: %1.2f bpm".format(hrrr[0]) + " Resp Rate: %1.2f breaths/min".format(hrrr[1])
                 runOnUiThread { textViewHR.text = hrString }
+                // Save Data as: [ Time Stamp (s), HR, RR ]
+                mEcgHeartRespiratoryFile!!.exportFileDouble(currentTimeStamp, hrrr[0], hrrr[1])
             }
         }
     }
@@ -300,6 +324,10 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             val uii4 = FileProvider.getUriForFile(context, context.packageName + ".provider", mSaveFileMPUOutputs!!.file)
             files.add(uii4)
         }
+        if (mEcgHeartRespiratoryFile != null) {
+            val uii5 = FileProvider.getUriForFile(context, context.packageName+".provider", mEcgHeartRespiratoryFile!!.file)
+            files.add(uii5)
+        }
         val exportData = Intent(Intent.ACTION_SEND_MULTIPLE)
         exportData.putExtra(Intent.EXTRA_SUBJECT, "ECG Sensor Data Export Details")
         exportData.putParcelableArrayListExtra(Intent.EXTRA_STREAM, files)
@@ -311,6 +339,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     private fun terminateDataFileWriter() {
         mPrimarySaveDataFile?.terminateDataFileWriter()
         mTensorflowOutputsSaveFile?.terminateDataFileWriter()
+        mEcgHeartRespiratoryFile?.terminateDataFileWriter()
         mSaveFileMPU?.terminateDataFileWriter()
         mSaveFileMPUOutputs?.terminateDataFileWriter()
     }
@@ -399,6 +428,11 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             Log.e(TAG, "fileTimeStamp: $fileNameTimeStamped2")
             mTensorflowOutputsSaveFile = SaveDataFile(directory2, fileNameTimeStamped2, 24, 1.toDouble() / mSampleRate,
                     saveTimestamps = false, includeClass = false)
+        }
+        val fileNameEcgHrrr = "ECG_HRRR_" + mTimeStamp + "_" + mSampleRate.toString() + "Hz"
+        if (mEcgHeartRespiratoryFile == null) {
+            Log.e(TAG, "fileTimeStamp: $fileNameEcgHrrr")
+            mEcgHeartRespiratoryFile = SaveDataFile(directory2, fileNameEcgHrrr, 24, 2.0, saveTimestamps = false, includeClass = false)
         }
     }
 
@@ -946,7 +980,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     companion object {
         const val HZ = "0 Hz"
         private const val INPUT_DATA_FEED_KEY = "input_1"
-        private const val OUTPUT_DATA_FEED_KEY = "conv1d_30/truediv"  // dense_1/truediv
+        private const val OUTPUT_DATA_FEED_KEY = "conv1d_30/truediv"
         private const val INPUT_DATA_ACTIV_KEY = "conv1d_1_input"
         private const val OUTPUT_DATA_ACTIV_KEY = "dense_2/Softmax"
         private val TAG = DeviceControlActivity::class.java.simpleName
@@ -966,6 +1000,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         var mSSVEPClass = 0.0
         //Save Data File
         private var mPrimarySaveDataFile: SaveDataFile? = null
+        private var mEcgHeartRespiratoryFile: SaveDataFile? = null
         private var mTensorflowOutputsSaveFile: SaveDataFile? = null
         private var mSaveFileMPU: SaveDataFile? = null
         private var mSaveFileMPUOutputs: SaveDataFile? = null

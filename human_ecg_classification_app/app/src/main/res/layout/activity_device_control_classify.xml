@@ -4,12 +4,6 @@
     android:orientation="vertical" android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <TextView
-        android:id="@+id/textViewHR"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Heart Rate: please wait..." />
-
     <com.androidplot.xy.XYPlot
         android:id="@+id/ecgTimeDomainXYPlot"
         style="@style/APFullScreenGraph.Light.Minimalist"
@@ -24,6 +18,12 @@
         android:layout_height="0dp"
         android:layout_weight="0.3333"
         ap:renderMode="use_background_thread" />
+    <TextView
+        android:id="@+id/textViewHR"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="..."
+        android:textSize="24dp"/>
     <com.androidplot.xy.XYPlot
         android:id="@+id/motionDataPlot"
         style="@style/APFullScreenGraph.Light.Minimalist"
@@ -31,6 +31,13 @@
         android:layout_height="0dp"
         android:layout_weight="0.3333"
         ap:renderMode="use_background_thread" />
+
+    <TextView
+        android:id="@+id/textViewActivity"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="24dp"
+        android:text="Activity: "/>
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -56,6 +63,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:textSize="24dp"
             android:text="TextView" />
 
         <TextView
@@ -65,7 +73,7 @@
             android:layout_weight="0.4"
             android:text="Battery"
             android:textAlignment="textEnd"
-            android:textSize="15sp" />
+            android:textSize="24dp" />
 
     </LinearLayout>
 

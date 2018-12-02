@@ -2,13 +2,10 @@ package com.yeolabgt.mahmoodms.ecgmpu1chdemo
 
 import android.os.Environment
 import android.util.Log
-
 import com.opencsv.CSVWriter
-
 import java.io.File
 import java.io.FileWriter
 import java.io.IOException
-import java.util.*
 
 /**
  * Created by mmahmood31 on 10/19/2017.
@@ -98,7 +95,7 @@ constructor(directory: String, fileName: String, byteResolution: Int, increment:
 
     fun writeToDiskFloat(vararg floatArrays: FloatArray?) {
         val len = floatArrays.size
-        val floats = Array(len) {FloatArray(floatArrays[0]!!.size)}
+        val floats = Array(len) { FloatArray(floatArrays[0]!!.size) }
         for (f in 0 until len) {
             floats[f] = floatArrays[f]!!
         }
@@ -112,7 +109,7 @@ constructor(directory: String, fileName: String, byteResolution: Int, increment:
 
     fun writeToDiskDouble(vararg doubleArrays: DoubleArray?) {
         val len = doubleArrays.size
-        val floats = Array(len) {DoubleArray(doubleArrays[0]!!.size)}
+        val floats = Array(len) { DoubleArray(doubleArrays[0]!!.size) }
         for (f in 0 until len) {
             floats[f] = doubleArrays[f]!!
         }
@@ -172,6 +169,17 @@ constructor(directory: String, fileName: String, byteResolution: Int, increment:
         } catch (e: IOException) {
             Log.e("IOException", e.toString())
         }
+    }
+
+    fun exportFileDouble(vararg doubles: Double) {
+        Log.e(TAG,"doubles.size: ${doubles.size}")
+        val writeCSVValue = arrayOfNulls<String>(doubles.size)
+        for (i in 0 until doubles.size) {
+            writeCSVValue[i] = doubles[i].toString()
+        }
+        csvWriter!!.writeNext(writeCSVValue, false)
+        this.mLinesWrittenTotal++
+        this.mLinesWrittenCurrentFile++
     }
 
     @Throws(IOException::class)
