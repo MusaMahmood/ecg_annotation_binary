@@ -11,38 +11,37 @@ cmake_minimum_required(VERSION 3.4.1)
 # Gradle automatically packages shared libraries with your APK.
 
 add_library( # Sets the name of the library.
-             native-lib
+        native-lib
 
-             # Sets the library as a shared library.
-             SHARED
+        # Sets the library as a shared library.
+        SHARED
 
-             # Provides a relative path to your source file(s).
-             src/main/cpp/native-lib.cpp )
+        # Provides a relative path to your source file(s).
+        src/main/cpp/native-lib.cpp)
 
 add_library( # Sets the name of the library.
-              ecg-lib
+        ecg-lib
 
-              # Sets the library as a shared library.
-              SHARED
-              # Provides a relative path to your source file(s).
+        # Sets the library as a shared library.
+        SHARED
+        # Provides a relative path to your source file(s).
 
-                # Main C++ Data Processing Files
-                src/main/cpp/ssvep_filter_f32.cpp
-                src/main/cpp/downsample_250Hz.cpp
-                src/main/cpp/ecg_bandstop_250Hz.cpp
-                src/main/cpp/ecg_filt_rescale.cpp
-                src/main/cpp/rearrange_5c.cpp
-                src/main/cpp/smooth_probs.cpp
-                src/main/cpp/get_hr_rr.cpp
-                src/main/cpp/get_hr_rr_emxutil.cpp
-                src/main/cpp/activ_prep.cpp
+        # Main C++ Data Processing Files
+        src/main/cpp/downsample_250Hz.cpp
+        src/main/cpp/ecg_bandstop_250Hz.cpp
+        src/main/cpp/ecg_filt_rescale.cpp
+        src/main/cpp/rearrange_5c.cpp
+        src/main/cpp/smooth_probs.cpp
+        src/main/cpp/get_hr_rr.cpp
+        src/main/cpp/get_hr_rr_emxutil.cpp
+        src/main/cpp/activ_prep.cpp
 
-                # Executor
-                src/main/cpp/jniExecutor.cpp
+        # Executor
+        src/main/cpp/jniExecutor.cpp
 
-                src/main/cpp/rt_nonfinite.cpp
-                src/main/cpp/rtGetInf.cpp
-                src/main/cpp/rtGetNaN.cpp )
+        src/main/cpp/rt_nonfinite.cpp
+        src/main/cpp/rtGetInf.cpp
+        src/main/cpp/rtGetNaN.cpp)
 
 # The following line allows for auto-including header files in the listed directory:
 include_directories(src/main/cpp/)
@@ -54,27 +53,27 @@ include_directories(src/main/cpp/)
 # completing its build.
 
 find_library( # Sets the name of the path variable.
-              log-lib
+        log-lib
 
-              # Specifies the name of the NDK library that
-              # you want CMake to locate.
-              log )
+        # Specifies the name of the NDK library that
+        # you want CMake to locate.
+        log)
 
 # Specifies libraries CMake should link to your target library. You
 # can link multiple libraries, such as libraries you define in this
 # build script, prebuilt third-party libraries, or system libraries.
 
 target_link_libraries( # Specifies the target library.
-                       # ### NOTE YOU HAVE TO INDIVIDUALLY LINK EACH LIBRARY!
-                       ecg-lib
+        # ### NOTE YOU HAVE TO INDIVIDUALLY LINK EACH LIBRARY!
+        ecg-lib
 
-                       # Links the target library to the log library
-                       # included in the NDK.
-                       ${log-lib} )
+        # Links the target library to the log library
+        # included in the NDK.
+        ${log-lib})
 
 target_link_libraries( # Specifies the target library.
-                       native-lib
+        native-lib
 
-                       # Links the target library to the log library
-                       # included in the NDK.
-                       ${log-lib} )
+        # Links the target library to the log library
+        # included in the NDK.
+        ${log-lib})

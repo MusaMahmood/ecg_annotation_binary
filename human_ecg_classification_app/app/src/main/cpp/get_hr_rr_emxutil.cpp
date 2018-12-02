@@ -5,7 +5,7 @@
 // File: get_hr_rr_emxutil.cpp
 //
 // MATLAB Coder version            : 3.3
-// C/C++ source code generated on  : 01-Dec-2018 17:24:48
+// C/C++ source code generated on  : 02-Dec-2018 18:36:01
 //
 
 // Include Files
@@ -71,7 +71,7 @@ void emxEnsureCapacity(emxArray__common *emxArray, int oldNumel, unsigned int
 void emxFree_real_T(emxArray_real_T **pEmxArray)
 {
   if (*pEmxArray != (emxArray_real_T *)NULL) {
-    if (((*pEmxArray)->data != (double *)NULL) && (*pEmxArray)->canFreeData) {
+    if ((*pEmxArray)->data != (double *)NULL && (*pEmxArray)->canFreeData) {
       free((void *)(*pEmxArray)->data);
     }
 
@@ -108,27 +108,6 @@ void emxInit_real_T(emxArray_real_T **pEmxArray, int b_numDimensions)
 // Return Type  : void
 //
 void emxInit_real_T1(emxArray_real_T **pEmxArray, int b_numDimensions)
-{
-  emxArray_real_T *emxArray;
-  int i;
-  *pEmxArray = (emxArray_real_T *)malloc(sizeof(emxArray_real_T));
-  emxArray = *pEmxArray;
-  emxArray->data = (double *)NULL;
-  emxArray->numDimensions = b_numDimensions;
-  emxArray->size = (int *)malloc((unsigned int)(sizeof(int) * b_numDimensions));
-  emxArray->allocatedSize = 0;
-  emxArray->canFreeData = true;
-  for (i = 0; i < b_numDimensions; i++) {
-    emxArray->size[i] = 0;
-  }
-}
-
-//
-// Arguments    : emxArray_real_T **pEmxArray
-//                int b_numDimensions
-// Return Type  : void
-//
-void emxInit_real_T2(emxArray_real_T **pEmxArray, int b_numDimensions)
 {
   emxArray_real_T *emxArray;
   int i;

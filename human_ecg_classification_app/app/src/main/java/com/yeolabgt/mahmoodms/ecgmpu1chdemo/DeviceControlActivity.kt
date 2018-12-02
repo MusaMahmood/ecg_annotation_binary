@@ -112,23 +112,19 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
     private val mClassifyActivityThread = Runnable {
         if (mTFRunModelActivity) {
+            val currentTimeStamp = mMPUTotalDatapoints.toDouble() / mSampleRate.toDouble()
             val outputProbabilities = FloatArray(6)
             val doubleArrayAccGyr = Doubles.concat(mAccXBuffer, mAccYBuffer, mAccZBuffer, mGyrXBuffer, mGyrYBuffer, mGyrZBuffer)
             val inputFeatures = jactivPrep(doubleArrayAccGyr)
-            Log.e(TAG, "inputFeatures: ${Arrays.toString(inputFeatures)}")
             mTensorFlowInferenceInterfaceActivity?.feed(INPUT_DATA_ACTIV_KEY, inputFeatures, 1L/*batch*/, 256L/*x_dim*/, 8L/*y_dim*/)
             mTensorFlowInferenceInterfaceActivity?.run(mOutputScoresNamesActivity)
             mTensorFlowInferenceInterfaceActivity?.fetch(OUTPUT_DATA_ACTIV_KEY, outputProbabilities)
             Log.e(TAG, "Activity: OutputProbs: ${Arrays.toString(outputProbabilities)}")
             //Save Data:
-            val outputArray0 = DoubleArray(256) {outputProbabilities[0].toDouble()}
-            val outputArray1 = DoubleArray(256) {outputProbabilities[1].toDouble()}
-            val outputArray2 = DoubleArray(256) {outputProbabilities[2].toDouble()}
-            val outputArray3 = DoubleArray(256) {outputProbabilities[3].toDouble()}
-            val outputArray4 = DoubleArray(256) {outputProbabilities[4].toDouble()}
-            val outputArray5 = DoubleArray(256) {outputProbabilities[5].toDouble()}
-            mSaveFileMPUOutputs?.writeToDiskDouble(mAccXBuffer, mAccYBuffer, mAccZBuffer, mGyrXBuffer, mGyrYBuffer, mGyrZBuffer,
-                    outputArray0, outputArray1, outputArray2,outputArray3, outputArray4, outputArray5)
+            mSaveFileMPUOutputs?.exportFileDouble(currentTimeStamp, outputProbabilities[0].toDouble(),
+                    outputProbabilities[1].toDouble(), outputProbabilities[2].toDouble(),
+                    outputProbabilities[3].toDouble(), outputProbabilities[4].toDouble(),
+                    outputProbabilities[5].toDouble())
             val outputClass = getArgMax(outputProbabilities)
             val s = when (outputClass) {
                 0 -> "Idle"
@@ -140,7 +136,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 else -> ""
             }
             val outputString = "Current Activity: $s"
-            runOnUiThread {textViewActivity.text = outputString}
+            runOnUiThread { textViewActivity.text = outputString }
         }
     }
 
@@ -196,13 +192,6 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                     "Smoothed Output Class: ${yArray2[0]} \n" +
                     "Smoothed Array: ${Arrays.toString(yArray2.slice(1..5).toFloatArray())}"
             Log.e(TAG, "ClassificationOutput: $s")
-            if (mHRRREnabled) {
-                val hrrr = jGetHRRR(ecgRawDoubles) /*inputArray.map { it.toDouble() }.toDoubleArray()*/
-                val hrString = "Heart Rate: %1.2f bpm".format(hrrr[0]) + " Resp Rate: %1.2f breaths/min".format(hrrr[1])
-                runOnUiThread { textViewHR.text = hrString }
-                // Save Data as: [ Time Stamp (s), HR, RR ]
-                mEcgHeartRespiratoryFile!!.exportFileDouble(currentTimeStamp, hrrr[0], hrrr[1])
-            }
         }
     }
 
@@ -325,7 +314,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             files.add(uii4)
         }
         if (mEcgHeartRespiratoryFile != null) {
-            val uii5 = FileProvider.getUriForFile(context, context.packageName+".provider", mEcgHeartRespiratoryFile!!.file)
+            val uii5 = FileProvider.getUriForFile(context, context.packageName + ".provider", mEcgHeartRespiratoryFile!!.file)
             files.add(uii5)
         }
         val exportData = Intent(Intent.ACTION_SEND_MULTIPLE)
@@ -611,7 +600,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             mPrimarySaveDataFile!!.setIncludeClass(saveClass)
             val filterData = PreferencesFragment.setFilterData(context)
             if (mGraphAdapterCh1 != null) {
-                mFilterData = filterData
+                mMPUClassifyActivityData = filterData
             }
 
             mTimeDomainPlotAdapterCh1!!.xyPlot?.redraw()
@@ -713,13 +702,22 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             mCh1!!.handleNewData(mNewEEGdataBytes)
             mPrimarySaveDataFile!!.writeToDisk(mCh1!!.characteristicDataPacketBytes)
             // For every 2000 dp recieved, run classification model.
-            if (mCh1!!.totalDataPointsReceived > 7500) {
+            if (mCh1!!.totalDataPointsReceived > 15 * mSampleRate ) {
                 mHRRREnabled = true
             }
-            if (mCh1!!.dataPointCounterClassify > 500 && mCh1!!.totalDataPointsReceived > 2000) {
+            if (mCh1!!.dataPointCounterClassify > 4 * mSampleRate && mCh1!!.totalDataPointsReceived > 4 * mSampleRate) {
                 Log.e(TAG, "mClassifyThread Start Time")
                 mCurrentIndex = mCh1!!.totalDataPointsReceived - 2000
                 mCh1?.resetCounterClassify()
+                val ecgRawDoubles = mCh1!!.classificationBuffer
+                Log.e(TAG, "mCh1!!.classificationBuffer = ${mCh1!!.classificationBuffer.size}")
+                if (mHRRREnabled) {
+                    val currentTimeStamp = mCh1!!.totalDataPointsReceived.toDouble() / mSampleRate.toDouble()
+                    val hrrr = jGetHRRR(ecgRawDoubles)
+                    val hrString = "Heart Rate: %1.2f bpm".format(hrrr[0]) + " Resp Rate: %1.2f breaths/min".format(hrrr[1])
+                    runOnUiThread { textViewHR.text = hrString }
+                    mEcgHeartRespiratoryFile!!.exportFileDouble(currentTimeStamp, hrrr[0], hrrr[1])
+                }
                 val classifyTaskThread = Thread(mClassifyThread)
                 classifyTaskThread.start()
             }
@@ -736,11 +734,13 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             // TODO add data to it's own buffer (outside of mMPU) → (256, 6), as 6 sep arrays: use the following function to return relevant data(separated);
             addToGraphBufferMPU(mMPU!!)
             Log.e(TAG, "mMPU!!.totalDataPointsReceived: ${mMPU!!.totalDataPointsReceived}")
-            if (mMPU!!.dataPointCounterClassify > 128 && mMPU!!.totalDataPointsReceived > 256) {
-                Log.e(TAG, "mClassifyActivityThread Start Time")
-                mMPU?.resetCounterClassify()
-                val classifyActivityThread = Thread(mClassifyActivityThread)
-                classifyActivityThread.start()
+            if (mMPUClassifyActivityData) {
+                if (mMPU!!.dataPointCounterClassify > 128 && mMPU!!.totalDataPointsReceived > 256) {
+                    Log.e(TAG, "mClassifyActivityThread Start Time")
+                    mMPU?.resetCounterClassify()
+                    val classifyActivityThread = Thread(mClassifyActivityThread)
+                    classifyActivityThread.start()
+                }
             }
             mSaveFileMPU!!.exportDataWithTimestampMPU(mMPU!!.characteristicDataPacketBytes)
             if (mSaveFileMPU!!.mLinesWrittenCurrentFile > 1048576) {
@@ -768,10 +768,10 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 val gyrX = DataChannel.bytesToDoubleMPUGyro(dataChannel.dataBuffer!![12 * i + 6], dataChannel.dataBuffer!![12 * i + 7])
                 val gyrY = DataChannel.bytesToDoubleMPUGyro(dataChannel.dataBuffer!![12 * i + 8], dataChannel.dataBuffer!![12 * i + 9])
                 val gyrZ = DataChannel.bytesToDoubleMPUGyro(dataChannel.dataBuffer!![12 * i + 10], dataChannel.dataBuffer!![12 * i + 11])
-                mGraphAdapterMotionAX?.addDataPointTimeDomain(accX, mTimestampIdxMPU)
-                mGraphAdapterMotionAY?.addDataPointTimeDomain(accY, mTimestampIdxMPU)
-                mGraphAdapterMotionAZ?.addDataPointTimeDomain(accZ, mTimestampIdxMPU)
-                mTimestampIdxMPU += 1
+                mGraphAdapterMotionAX?.addDataPointTimeDomain(accX, mMPUTotalDatapoints)
+                mGraphAdapterMotionAY?.addDataPointTimeDomain(accY, mMPUTotalDatapoints)
+                mGraphAdapterMotionAZ?.addDataPointTimeDomain(accZ, mMPUTotalDatapoints)
+                mMPUTotalDatapoints += 1
                 // Put in arrays: starting at back - numberDataPoints
                 System.arraycopy(mAccXBuffer, 1, mAccXBuffer, 0, mAccXBuffer.size - 1) //shift backwards
                 mAccXBuffer[255] = accX // Add to end
@@ -991,9 +991,9 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         internal var mCh1: DataChannel? = null
         internal var mCh2: DataChannel? = null
         internal var mMPU: DataChannel? = null
-        internal var mFilterData = false
+        internal var mMPUClassifyActivityData = true
         private var mPacketBuffer = 6
-        private var mTimestampIdxMPU = 0
+        private var mMPUTotalDatapoints = 0
         //RSSI:
         private const val RSSI_UPDATE_TIME_INTERVAL = 2000
         private const val outputClasses = 5

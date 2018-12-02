@@ -172,7 +172,6 @@ constructor(directory: String, fileName: String, byteResolution: Int, increment:
     }
 
     fun exportFileDouble(vararg doubles: Double) {
-        Log.e(TAG,"doubles.size: ${doubles.size}")
         val writeCSVValue = arrayOfNulls<String>(doubles.size)
         for (i in 0 until doubles.size) {
             writeCSVValue[i] = doubles[i].toString()
