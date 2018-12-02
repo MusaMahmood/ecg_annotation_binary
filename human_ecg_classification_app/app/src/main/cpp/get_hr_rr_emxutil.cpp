@@ -5,7 +5,7 @@
 // File: get_hr_rr_emxutil.cpp
 //
 // MATLAB Coder version            : 3.3
-// C/C++ source code generated on  : 19-Nov-2018 15:06:34
+// C/C++ source code generated on  : 01-Dec-2018 17:24:48
 //
 
 // Include Files
@@ -108,6 +108,27 @@ void emxInit_real_T(emxArray_real_T **pEmxArray, int b_numDimensions)
 // Return Type  : void
 //
 void emxInit_real_T1(emxArray_real_T **pEmxArray, int b_numDimensions)
+{
+  emxArray_real_T *emxArray;
+  int i;
+  *pEmxArray = (emxArray_real_T *)malloc(sizeof(emxArray_real_T));
+  emxArray = *pEmxArray;
+  emxArray->data = (double *)NULL;
+  emxArray->numDimensions = b_numDimensions;
+  emxArray->size = (int *)malloc((unsigned int)(sizeof(int) * b_numDimensions));
+  emxArray->allocatedSize = 0;
+  emxArray->canFreeData = true;
+  for (i = 0; i < b_numDimensions; i++) {
+    emxArray->size[i] = 0;
+  }
+}
+
+//
+// Arguments    : emxArray_real_T **pEmxArray
+//                int b_numDimensions
+// Return Type  : void
+//
+void emxInit_real_T2(emxArray_real_T **pEmxArray, int b_numDimensions)
 {
   emxArray_real_T *emxArray;
   int i;
