@@ -45,3 +45,4 @@ graph_rat/
 _tf_annotate/model_out/
 *.idea/
 .idea/vcs.xml
+human_ecg_classification_app/app/.cxx/

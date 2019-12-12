@@ -17,6 +17,7 @@ import android.support.v4.content.FileProvider
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.TextView
@@ -49,7 +50,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     private var mGraphAdapterMotionAY: GraphAdapter? = null
     private var mGraphAdapterMotionAZ: GraphAdapter? = null
     private var mTimeDomainPlotAdapterCh1: XYPlotAdapter? = null
-    private var mClassificationLabelsPlotAdapter: XYPlotAdapter? = null
+//    private var mClassificationLabelsPlotAdapter: XYPlotAdapter? = null
     private var mMotionDataPlotAdapter: XYPlotAdapter? = null
     private var mCurrentIndex = 0
     //Device Information
@@ -96,6 +97,8 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     private val mGyrZBuffer = DoubleArray(256)
     // HR/RR:
     private var mHRRREnabled = false
+    private var mPreviousHRValue = 60.0
+    private var mPreviousRRValue = 14.0
 
 
     private val mTimeStamp: String
@@ -136,13 +139,20 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 else -> ""
             }
             val outputString = "Current Activity: $s"
-            runOnUiThread { textViewActivity.text = outputString }
+            runOnUiThread {
+                textViewActivity.text = outputString
+                when (outputClass) {
+                    5 -> textViewActivity.setTextColor(Color.RED)
+                    else -> textViewActivity.setTextColor(Color.BLACK)
+
+                }
+            }
         }
     }
 
     private val mClassifyThread = Runnable {
         if (mTFRunModel) {
-            val currentTimeStamp = mCh1!!.totalDataPointsReceived.toDouble() / mSampleRate.toDouble()
+//            val currentTimeStamp = mCh1!!.totalDataPointsReceived.toDouble() / mSampleRate.toDouble()
             val outputProbabilities = FloatArray(2000 * outputClasses)
             val ecgRawDoubles = mCh1!!.classificationBuffer
             //Select last 2000 values for saving.
@@ -196,7 +206,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     }
 
     private fun enableTensorflowModel() {
-        val classificationModelBinary = "opt_iptb_inception.v2.8_0.001.pb"
+        val classificationModelBinary = "opt_labv2_inception.v2.8_0.001.pb"
         val classificationModelPath = Environment.getExternalStorageDirectory().absolutePath +
                 "/Download/tensorflow_assets/ecg_classify/" + classificationModelBinary
         Log.e(TAG, "Tensorflow ECG classification Model Path: $classificationModelPath")
@@ -217,7 +227,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             }
         }
         // Enable Activity Model:
-        val classificationModelBinaryActivity = "opt_activity256_classify_v0.pb"
+        val classificationModelBinaryActivity = "opt_activity256_classify_incpf_v0.pb"
         val classificationModelPathActivity = Environment.getExternalStorageDirectory().absolutePath +
                 "/Download/tensorflow_assets/activity_classify/" + classificationModelBinaryActivity
         Log.e(TAG, "Tensorflow Activity classification Model Path: $classificationModelPathActivity")
@@ -290,6 +300,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         //Initialize Bluetooth
         if (!mBleInitializedBoolean) initializeBluetoothArray()
         mLastTime = System.currentTimeMillis()
+        batteryText.visibility = View.INVISIBLE
     }
 
     private fun exportData() {
@@ -411,17 +422,16 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         }
 
         // Tensorflow Stuff:
-        val directory2 = "/ECG_TF_data_out"
-        val fileNameTimeStamped2 = "ECG_TF_data_" + mTimeStamp + "_" + mSampleRate.toString() + "Hz"
+        val fileNameTimeStamped2 = "ECG_TF_outputs_" + mTimeStamp + "_" + mSampleRate.toString() + "Hz"
         if (mTensorflowOutputsSaveFile == null) {
             Log.e(TAG, "fileTimeStamp: $fileNameTimeStamped2")
-            mTensorflowOutputsSaveFile = SaveDataFile(directory2, fileNameTimeStamped2, 24, 1.toDouble() / mSampleRate,
+            mTensorflowOutputsSaveFile = SaveDataFile(directory, fileNameTimeStamped2, 24, 1.toDouble() / mSampleRate,
                     saveTimestamps = false, includeClass = false)
         }
         val fileNameEcgHrrr = "ECG_HRRR_" + mTimeStamp + "_" + mSampleRate.toString() + "Hz"
         if (mEcgHeartRespiratoryFile == null) {
             Log.e(TAG, "fileTimeStamp: $fileNameEcgHrrr")
-            mEcgHeartRespiratoryFile = SaveDataFile(directory2, fileNameEcgHrrr, 24, 2.0, saveTimestamps = false, includeClass = false)
+            mEcgHeartRespiratoryFile = SaveDataFile(directory, fileNameEcgHrrr, 24, 2.0, saveTimestamps = false, includeClass = false)
         }
     }
 
@@ -445,21 +455,21 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     private fun setupGraph() {
         // 1. ECG Data Plot:
         mTimeDomainPlotAdapterCh1 = XYPlotAdapter(findViewById(R.id.ecgTimeDomainXYPlot), false, 2000)
-        mGraphAdapterCh1 = GraphAdapter(2000, "ECG Data Ch 1", false, Color.BLUE)
+        mGraphAdapterCh1 = GraphAdapter(2000, "ECG Ch1", false, Color.BLUE)
         mTimeDomainPlotAdapterCh1?.xyPlot?.addSeries(mGraphAdapterCh1!!.series, mGraphAdapterCh1!!.lineAndPointFormatter)
         // 2. ECG Label Plot:
-        mClassificationLabelsPlotAdapter = XYPlotAdapter(findViewById(R.id.ecgLabelXYPlot), false, 2000, "Time (s)", "Label")
-        mClassificationLabelsPlotAdapter?.setRangeStepValue(1.0)
-        mGraphAdapterClass0 = GraphAdapter(2000, "C0", false, Color.BLUE)
+//        mClassificationLabelsPlotAdapter = XYPlotAdapter(findViewById(R.id.ecgLabelXYPlot), false, 2000, "Time (s)", "Label")
+//        mClassificationLabelsPlotAdapter?.setRangeStepValue(1.0)
+        mGraphAdapterClass0 = GraphAdapter(2000, "C0", false, Color.GREEN)
         mGraphAdapterClass1 = GraphAdapter(2000, "C1", false, Color.RED)
         mGraphAdapterClass2 = GraphAdapter(2000, "C2", false, Color.CYAN)
-        mGraphAdapterClass3 = GraphAdapter(2000, "C3", false, Color.GREEN)
+        mGraphAdapterClass3 = GraphAdapter(2000, "C3", false, Color.parseColor("#ff9000"))
         mGraphAdapterClass4 = GraphAdapter(2000, "C4", false, Color.MAGENTA)
-        mClassificationLabelsPlotAdapter?.xyPlot!!.addSeries(mGraphAdapterClass0?.series, mGraphAdapterClass0?.lineAndPointFormatter)
-        mClassificationLabelsPlotAdapter?.xyPlot!!.addSeries(mGraphAdapterClass1?.series, mGraphAdapterClass1?.lineAndPointFormatter)
-        mClassificationLabelsPlotAdapter?.xyPlot!!.addSeries(mGraphAdapterClass2?.series, mGraphAdapterClass2?.lineAndPointFormatter)
-        mClassificationLabelsPlotAdapter?.xyPlot!!.addSeries(mGraphAdapterClass3?.series, mGraphAdapterClass3?.lineAndPointFormatter)
-        mClassificationLabelsPlotAdapter?.xyPlot!!.addSeries(mGraphAdapterClass4?.series, mGraphAdapterClass4?.lineAndPointFormatter)
+        mTimeDomainPlotAdapterCh1?.xyPlot!!.addSeries(mGraphAdapterClass0?.series, mGraphAdapterClass0?.lineAndPointFormatter)
+        mTimeDomainPlotAdapterCh1?.xyPlot!!.addSeries(mGraphAdapterClass1?.series, mGraphAdapterClass1?.lineAndPointFormatter)
+        mTimeDomainPlotAdapterCh1?.xyPlot!!.addSeries(mGraphAdapterClass2?.series, mGraphAdapterClass2?.lineAndPointFormatter)
+        mTimeDomainPlotAdapterCh1?.xyPlot!!.addSeries(mGraphAdapterClass3?.series, mGraphAdapterClass3?.lineAndPointFormatter)
+        mTimeDomainPlotAdapterCh1?.xyPlot!!.addSeries(mGraphAdapterClass4?.series, mGraphAdapterClass4?.lineAndPointFormatter)
         // 3. Motion Sensor Plot:
         mMotionDataPlotAdapter = XYPlotAdapter(findViewById(R.id.motionDataPlot), "Time (s)", "Acc (g)", 375.0)
         mGraphAdapterMotionAX = GraphAdapter(375, "Acc X", false, Color.RED)
@@ -469,7 +479,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         mMotionDataPlotAdapter?.xyPlot!!.addSeries(mGraphAdapterMotionAY?.series, mGraphAdapterMotionAY?.lineAndPointFormatter)
         mMotionDataPlotAdapter?.xyPlot!!.addSeries(mGraphAdapterMotionAZ?.series, mGraphAdapterMotionAZ?.lineAndPointFormatter)
         // 4. Start Redrawer:
-        val xyPlotList = listOf(mTimeDomainPlotAdapterCh1?.xyPlot, mClassificationLabelsPlotAdapter?.xyPlot, mMotionDataPlotAdapter?.xyPlot)
+        val xyPlotList = listOf(mTimeDomainPlotAdapterCh1?.xyPlot, mMotionDataPlotAdapter?.xyPlot)
         mRedrawer = Redrawer(xyPlotList, 30f, false)
         mRedrawer!!.start()
         mGraphInitializedBoolean = true
@@ -714,8 +724,23 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 if (mHRRREnabled) {
                     val currentTimeStamp = mCh1!!.totalDataPointsReceived.toDouble() / mSampleRate.toDouble()
                     val hrrr = jGetHRRR(ecgRawDoubles)
-                    val hrString = "Heart Rate: %1.2f bpm".format(hrrr[0]) + " Resp Rate: %1.2f breaths/min".format(hrrr[1])
-                    runOnUiThread { textViewHR.text = hrString }
+                    // TODO: Filter out values that are out of range!
+                    val hrString: String
+                    val rrString: String
+                    if (hrrr[0] in 0.0..300.0) {
+                        hrString = "%1.0f".format(hrrr[0])
+                        mPreviousHRValue = hrrr[0]
+                    } else {
+                        hrString = "%1.0f".format(mPreviousHRValue)
+                    }
+                    if (hrrr[1] in 0.0..35.0) {
+                        rrString = "%1.0f".format(hrrr[1])
+                        mPreviousRRValue = hrrr[1]
+                    } else {
+                        rrString = "%1.0f".format(mPreviousRRValue)
+                    }
+                    val hrrrString = "Heart Rate: $hrString bpm\nResp Rate: $rrString breaths/min"
+                    runOnUiThread { textViewHR.text = hrrrString }
                     mEcgHeartRespiratoryFile!!.exportFileDouble(currentTimeStamp, hrrr[0], hrrr[1])
                 }
                 val classifyTaskThread = Thread(mClassifyThread)
@@ -731,9 +756,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             val dataMPU = characteristic.value
             getDataRateBytes2(dataMPU.size) //+=240
             mMPU!!.handleNewData(dataMPU)
-            // TODO add data to it's own buffer (outside of mMPU) → (256, 6), as 6 sep arrays: use the following function to return relevant data(separated);
             addToGraphBufferMPU(mMPU!!)
-            Log.e(TAG, "mMPU!!.totalDataPointsReceived: ${mMPU!!.totalDataPointsReceived}")
             if (mMPUClassifyActivityData) {
                 if (mMPU!!.dataPointCounterClassify > 128 && mMPU!!.totalDataPointsReceived > 256) {
                     Log.e(TAG, "mClassifyActivityThread Start Time")
@@ -937,7 +960,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             if (finalPercent <= batteryWarning) {
                 mBatteryLevel!!.setTextColor(Color.RED)
                 mBatteryLevel!!.setTypeface(null, Typeface.BOLD)
-                Toast.makeText(applicationContext, "Charge Battery, Battery Low $status", Toast.LENGTH_SHORT).show()
+//                Toast.makeText(applicationContext, "Charge Battery, Battery Low $status", Toast.LENGTH_SHORT).show()
             } else {
                 mBatteryLevel!!.setTextColor(Color.GREEN)
                 mBatteryLevel!!.setTypeface(null, Typeface.BOLD)
@@ -981,8 +1004,8 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         const val HZ = "0 Hz"
         private const val INPUT_DATA_FEED_KEY = "input_1"
         private const val OUTPUT_DATA_FEED_KEY = "conv1d_30/truediv"
-        private const val INPUT_DATA_ACTIV_KEY = "conv1d_1_input"
-        private const val OUTPUT_DATA_ACTIV_KEY = "dense_2/Softmax"
+        private const val INPUT_DATA_ACTIV_KEY = "input_1"
+        private const val OUTPUT_DATA_ACTIV_KEY = "dense_1/Softmax"
         private val TAG = DeviceControlActivity::class.java.simpleName
         var mRedrawer: Redrawer? = null
         // Power Spectrum Graph Data:

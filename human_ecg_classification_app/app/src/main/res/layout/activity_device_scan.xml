@@ -22,34 +22,22 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="5dp"
-                android:layout_marginRight="5dp"
-                android:layout_weight="1"
-                android:text="Scanned Devices"
-                android:textAlignment="center"
-                android:textSize="17sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="5dp"
-                android:layout_marginRight="5dp"
-                android:layout_weight="1"
-                android:text="Selected Devices"
-                android:textAlignment="center"
-                android:textSize="17sp"
-                android:textStyle="bold|italic" />
-
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="5dp"
+                android:layout_marginRight="5dp"
+                android:text="Scanned Devices"
+                android:textAlignment="center"
+                android:textSize="17sp"
+                android:textStyle="bold" />
 
             <ListView
                 android:id="@+id/scanningList"
@@ -60,9 +48,17 @@
                 android:layout_marginBottom="5dp"
                 android:layout_weight="0.5"
                 android:fadeScrollbars="false"
-                android:listSelector="@android:color/transparent" >
+                android:listSelector="@android:color/transparent" />
 
-            </ListView>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="5dp"
+                android:layout_marginRight="5dp"
+                android:text="Selected Devices"
+                android:textAlignment="center"
+                android:textSize="17sp"
+                android:textStyle="bold|italic" />
 
             <ListView
                 android:id="@+id/selectedList"
@@ -74,7 +70,6 @@
                 android:layout_weight="0.5"
                 android:fadeScrollbars="false"
                 android:listSelector="@android:color/transparent" />
-
         </LinearLayout>
 
     </LinearLayout>
